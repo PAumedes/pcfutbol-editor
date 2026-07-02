@@ -26,6 +26,7 @@ import {
   initFirstRun,
   runDetect,
   runLoadPkf,
+  runSelectTeam,
   type FirstRunDeps,
   type FirstRunState,
 } from "./firstRun";
@@ -94,6 +95,7 @@ export const firstRunState = writable<FirstRunState>(initFirstRun());
 const firstRunDeps: FirstRunDeps = {
   detectGameDir: ipc.detectGameDir,
   loadPkf: ipc.loadPkf,
+  loadPkfTeam: ipc.loadPkfTeam,
 };
 
 export async function detectGameFolder(): Promise<void> {
@@ -107,5 +109,16 @@ export async function loadGameFolder(dir: string): Promise<void> {
   firstRunState.set(result);
   if (result.step === "loaded") {
     gameDir.set(dir);
+  }
+}
+
+/** Step 3 of first-run: the user picked a team out of the loaded index. */
+export async function selectTeam(pointer: number): Promise<void> {
+  const state = get(firstRunState);
+  if (state.step !== "loaded") return;
+  const result = await runSelectTeam(firstRunDeps, state, pointer);
+  firstRunState.set(result);
+  if (result.step === "team-loaded") {
+    resetDbc(result.dbc);
   }
 }

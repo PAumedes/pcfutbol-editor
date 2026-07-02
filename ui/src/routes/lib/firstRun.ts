@@ -9,7 +9,7 @@
 //   detect_game_dir()      -> Option<String>
 //   load_pkf(path: String) -> TeamIndex
 
-import type { TeamIndex } from "../../lib/model";
+import type { Dbc, TeamIndex } from "../../lib/model";
 
 export type FirstRunState =
   | { step: "idle" }
@@ -17,12 +17,28 @@ export type FirstRunState =
   | { step: "detected"; gameDir: string }
   | { step: "not-detected" }
   | { step: "loading"; gameDir: string }
-  | { step: "loaded"; gameDir: string; teamIndex: TeamIndex }
+  | { step: "loaded"; gameDir: string; pkfPath: string; teamIndex: TeamIndex }
+  | { step: "team-loaded"; gameDir: string; dbc: Dbc }
   | { step: "error"; message: string; gameDir: string | null };
 
 export interface FirstRunDeps {
   detectGameDir: () => Promise<string | null>;
   loadPkf: (path: string) => Promise<TeamIndex>;
+  loadPkfTeam: (path: string, pointer: number) => Promise<Dbc>;
+}
+
+/**
+ * `gameDir` (from `detect_game_dir`/manual entry) is the game's install
+ * root — the same root `export_dbdat` expects (PLAN.md Appendix B:
+ * `DBDAT\EQ003003\...`). The team container itself lives at a fixed path
+ * under that root, `DBDAT\EQ003003.PKF`, which is what `load_pkf`/
+ * `load_pkf_team` actually read via `fs::read` — so it's computed here
+ * once rather than duplicated at every call site.
+ */
+function pkfPathFor(gameDir: string): string {
+  const sep = gameDir.includes("\\") ? "\\" : "/";
+  const trimmed = gameDir.replace(/[\\/]+$/, "");
+  return `${trimmed}${sep}DBDAT${sep}EQ003003.PKF`;
 }
 
 export function initFirstRun(): FirstRunState {
@@ -45,8 +61,9 @@ export async function runDetect(deps: FirstRunDeps): Promise<FirstRunState> {
  * Never throws: IO/parse failures become a friendly error state.
  */
 export async function runLoadPkf(deps: FirstRunDeps, gameDir: string): Promise<FirstRunState> {
+  const pkfPath = pkfPathFor(gameDir);
   try {
-    const teamIndex = await deps.loadPkf(gameDir);
+    const teamIndex = await deps.loadPkf(pkfPath);
     if (teamIndex.length === 0) {
       return {
         step: "error",
@@ -55,9 +72,26 @@ export async function runLoadPkf(deps: FirstRunDeps, gameDir: string): Promise<F
           "That folder doesn't look like a PC Apertura 98/99 install — no teams were found in EQ003003.PKF. Double-check the folder and try again.",
       };
     }
-    return { step: "loaded", gameDir, teamIndex };
+    return { step: "loaded", gameDir, pkfPath, teamIndex };
   } catch (e) {
     return { step: "error", gameDir, message: friendlyMessage(e) };
+  }
+}
+
+/**
+ * Step 3: load one team's full record out of the already-scanned PKF, by
+ * the pointer the user picked from `loaded.teamIndex`. Never throws.
+ */
+export async function runSelectTeam(
+  deps: FirstRunDeps,
+  loaded: Extract<FirstRunState, { step: "loaded" }>,
+  pointer: number,
+): Promise<FirstRunState> {
+  try {
+    const dbc = await deps.loadPkfTeam(loaded.pkfPath, pointer);
+    return { step: "team-loaded", gameDir: loaded.gameDir, dbc };
+  } catch (e) {
+    return { step: "error", gameDir: loaded.gameDir, message: friendlyMessage(e) };
   }
 }
 

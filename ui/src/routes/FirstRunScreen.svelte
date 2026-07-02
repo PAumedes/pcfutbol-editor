@@ -5,12 +5,13 @@
   // needs to change when that swap happens.
   import BeveledPanel from "../lib/components/BeveledPanel.svelte";
   import Advisor from "../lib/components/Advisor.svelte";
-  import { detectGameFolder, firstRunState, loadGameFolder } from "./lib/appStore";
+  import { detectGameFolder, firstRunState, loadGameFolder, selectTeam } from "./lib/appStore";
   import { createEventDispatcher, onMount } from "svelte";
 
   const dispatch = createEventDispatcher<{ ready: void }>();
 
   let manualPath = "";
+  let selectingPointer: number | null = null;
 
   onMount(() => {
     void detectGameFolder();
@@ -21,7 +22,13 @@
     void loadGameFolder(manualPath.trim());
   }
 
-  $: if ($firstRunState.step === "loaded") {
+  async function onPickTeam(pointer: number) {
+    selectingPointer = pointer;
+    await selectTeam(pointer);
+    selectingPointer = null;
+  }
+
+  $: if ($firstRunState.step === "team-loaded") {
     dispatch("ready");
   }
 </script>
@@ -49,7 +56,17 @@
   {:else if $firstRunState.step === "loading"}
     <p>Reading team index from {$firstRunState.gameDir}…</p>
   {:else if $firstRunState.step === "loaded"}
-    <p>Loaded {$firstRunState.teamIndex.length} team(s) from {$firstRunState.gameDir}.</p>
+    <p>Loaded {$firstRunState.teamIndex.length} team(s) from {$firstRunState.gameDir}. Pick one to edit:</p>
+    <ul class="pcf-team-list">
+      {#each $firstRunState.teamIndex as entry (entry.pointer)}
+        <li>
+          <button disabled={selectingPointer !== null} on:click={() => onPickTeam(entry.pointer)}>
+            {entry.shortName}
+            {#if selectingPointer === entry.pointer}(loading…){/if}
+          </button>
+        </li>
+      {/each}
+    </ul>
   {:else if $firstRunState.step === "error"}
     <Advisor heading="Something went wrong" dismissible={false}>
       {$firstRunState.message}
@@ -71,5 +88,12 @@
     flex-direction: column;
     gap: var(--pcf-spacing-xs);
     margin: var(--pcf-spacing-sm) 0;
+  }
+  .pcf-team-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pcf-spacing-sm);
+    padding: 0;
   }
 </style>

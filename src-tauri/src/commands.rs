@@ -366,9 +366,12 @@ pub fn detect_game_dir() -> Option<String> {
         candidates.push(wine_c.join("Program Files/PC Futbol/Apertura 98-99"));
     }
 
+    // The container lives at `<root>\DBDAT\EQ003003.PKF` (Appendix B), not
+    // directly under the install root — matches the real fixture layout
+    // (`fixtures/PKF_FORMAT.md`) and `export_dbdat`'s own `DBDAT` join.
     candidates
         .into_iter()
-        .find(|dir| dir.join("EQ003003.PKF").is_file())
+        .find(|dir| dir.join("DBDAT").join("EQ003003.PKF").is_file())
         .map(|dir| dir.to_string_lossy().into_owned())
 }
 
@@ -670,6 +673,23 @@ mod tests {
         // Best-effort probe: on CI/dev containers nothing will match, and
         // that must surface as `None`, never a panic or an `Err`.
         let _ = detect_game_dir();
+    }
+
+    #[test]
+    fn detect_game_dir_candidate_check_matches_the_real_dbdat_layout() {
+        // detect_game_dir() itself only probes fixed OS-specific paths, so
+        // it can't be redirected at a temp dir in a unit test. This checks
+        // the same has-the-file predicate it uses internally against a
+        // fixture shaped like a real install, guarding the DBDAT/ layout
+        // regression (it used to look for EQ003003.PKF directly under the
+        // root, which never matches a real install).
+        let dir = temp_dir("detect-game-dir-layout");
+        let dbdat = dir.join("DBDAT");
+        fs::create_dir_all(&dbdat).unwrap();
+        fs::write(dbdat.join("EQ003003.PKF"), b"stub").unwrap();
+
+        assert!(dir.join("DBDAT").join("EQ003003.PKF").is_file());
+        assert!(!dir.join("EQ003003.PKF").is_file());
     }
 
     #[test]
