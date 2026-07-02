@@ -103,7 +103,7 @@ fn unknown_glyph_in_charmap_is_a_typed_error_not_a_panic() {
     // after the 2-byte length prefix that opens the team record, which is
     // the very first field in the file after the fixed header) with a
     // value absent from the synthetic charmap.
-    let header_len = "Copyright (c) 1996 Dinamic Multimedia".len() + 2 + 2 + 1 + 1;
+    let header_len = "Copyright (c)1996 Dinamic Multimedia".len() + 2 + 2 + 1 + 1;
     let short_name_bytes_start = header_len + 2; // skip the 2-byte length prefix
     bytes[short_name_bytes_start] = 0xFF; // not in the synthetic charmap
 

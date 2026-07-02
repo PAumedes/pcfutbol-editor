@@ -33,7 +33,11 @@ use crate::charmap::CharMap;
 use crate::cursor::{Reader, Writer};
 use crate::layout::{AttributesRaw, DateRaw, TacticsFixedRaw, TeamStatsRaw};
 
-const BANNER: &[u8] = b"Copyright (c) 1996 Dinamic Multimedia";
+// No space after "(c)" — confirmed against both the real EQ003003.PKF
+// container (473 raw occurrences) and PLAN.md Appendix A's own cited hex
+// (`436F70…646961` decodes to exactly this). The surrounding prose in
+// PLAN.md has a transcription typo (an extra space); the hex was right.
+const BANNER: &[u8] = b"Copyright (c)1996 Dinamic Multimedia";
 const MAGIC_FE06: [u8; 2] = [0xFE, 0x06];
 const SEPARATOR_ZERO: [u8; 1] = [0x00];
 const PITCH_SIZE: [u8; 4] = [0x46, 0x00, 0x6A, 0x00];
