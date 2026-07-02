@@ -1,0 +1,10 @@
+[package]
+name = "pcf-manager"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pcf-model = { path = "../pcf-model" }
+serde.workspace = true
+thiserror.workspace = true
