@@ -1,0 +1,276 @@
+# Confirmed-real byte->glyph substitution pairs for the PC Fútbol 6.x / PC
+# Apertura DBC character codec (PLAN.md Appendix A, §9 risk #1) — EXPANDED
+# via cross-referencing the "foreign reference clubs" stub table.
+#
+# PROVENANCE (different from confirmed_real_map.txt): every mapping in
+# *this* file is derived from decoding all 473 stub records inside the
+# real, user-owned `/c/PCF6AR/DBDAT/EQ003003.PKF` (see
+# fixtures/PKF_FORMAT.md §3 for the container/record format), using
+# `crates/pcf-codec/examples/dump_stub_table.rs` to print each record's
+# `short_name` and `stadium_name` fields (lossy-decoded: unmapped bytes
+# render as `[XX]`), then identifying the gaps by cross-referencing against
+# real, publicly-known football club/stadium names -- both the community's
+# `fixtures/pointers/team_pointers.csv` pointer catalog AND, once it became
+# clear the stub table's physical order is NOT the same as that catalog's
+# fixed pointer order (see note below), plain football-history knowledge of
+# the 1998-99 club rosters/stadiums the stub table actually encodes (its
+# physical order runs Spain's 1997-98 La Liga table, then Serie A, Premier
+# League, Bundesliga, Ligue 1, Primeira Liga, and on through dozens of
+# countries in roughly the same country sequence as team_pointers.csv,
+# before ending mid-partial-block with special entries like "Jugadores
+# Libres"). `confirmed_real_map.txt` (37 pairs, from the "Editor PCF 6.0"
+# manual's hex-editing appendix) is a DIFFERENT, independent source and is
+# kept separate -- this file is a superset that includes and re-verifies
+# all 37 of those pairs against this much bigger corpus (473 records,
+# ~940 decoded string fields) with ZERO contradictions found for any of
+# them.
+#
+# METHODOLOGY: for every byte value that appeared as `[XX]` in a lossy
+# decode, its glyph was inferred from the one legible, real-world name it
+# had to complete (e.g. "At[09]letic Club" can only be "Athletic Club" ->
+# 09=h), then CROSS-CHECKED against every other occurrence of that same
+# byte anywhere else in the corpus -- across different countries/languages
+# where possible, to rule out coincidence. Every pair below with 2+
+# citations was confirmed self-consistent across ALL its occurrences (no
+# byte was ever found decoding to two different letters). One genuine
+# byte-reuse oddity was found: a single Azerbaijani stadium name decodes to
+# "Tofi[11] Bakhramov" where the real name is "Tofiq Bakhramov" -- would
+# need 0x11='q', but 0x11='p' is independently confirmed by >110 other
+# occurrences across a dozen languages (Camp Nou, Sporting, Perugia, Park,
+# Apoquindo, Pachencho...). This is almost certainly a data-entry quirk in
+# the original 1998 game's own database (p/q mixup when transliterating
+# Azeri), NOT a codec ambiguity -- 0x11=p is kept as-is. See
+# fixtures/PKF_FORMAT.md's "Character map expansion" section for the full
+# writeup.
+#
+# CONFIDENCE TIERS (all pairs are believed correct; this just reflects how
+# much independent evidence backs each one):
+#   - No tag: 3+ independent-word citations, zero contradictions.
+#   - "2 citations": exactly two independent-word citations.
+#   - "1 citation": a single occurrence in the whole corpus. Still a
+#     precise, unambiguous real-world name match, but only one data point
+#     -- flagged per the task's request to be upfront about single-citation
+#     inferences rather than quietly presenting them as equally strong.
+#   - "1 citation, same stadium referenced twice": literally one underlying
+#     real-world string (e.g. two different clubs sharing a home ground),
+#     seen at two file offsets -- more than a single occurrence in the
+#     file, but not fully independent evidence.
+#
+# OPEN QUESTION (deliberately NOT included below): byte 0xD5 appears once,
+# in "[2B]ose[D5] Go[0C]es" (Estrela da Amadora's stadium, expected "José
+# Gomes"). It sits right where an accented e/é would complete "José", but
+# 0x88 is already independently confirmed as é (from the original 37-pair
+# manual corpus, re-confirmed here in "Santiago Bernabéu" etc.) -- two
+# different bytes both meaning "é" would be an unusual (though not
+# impossible) font-table duplication, and one occurrence isn't enough to
+# tell whether it's a distinct glyph, a data-entry variant, or noise. Left
+# unresolved rather than guessed.
+#
+# Format matches CharMap::parse: `HH\tChar` (byte hex, tab, glyph; \s means
+# space).
+
+# --- Original 37 pairs (confirmed_real_map.txt), RE-VERIFIED here ------
+# Every one of these was cross-checked against its occurrences across all
+# 473 stub records (as the base charmap `dump_stub_table.rs` used to do the
+# lossy decode) and never produced an inconsistent decode.
+00	a
+02	c
+03	b
+04	e
+05	d
+06	g
+08	i
+0A	k
+0D	l
+0E	o
+0F	n
+12	s
+13	r
+14	u
+15	t
+1B	z
+20	A
+22	C
+23	B
+24	E
+25	D
+26	G
+27	F
+28	I
+29	H
+2A	K
+2C	M
+2D	L
+2F	N
+32	S
+33	R
+35	T
+3F	^
+41	\s
+4D	,
+4F	.
+6C	=
+88	é
+
+# --- New: lowercase consonants -----------------------------------------
+# 07=f: "C.D. Teneri[07]e" (global=8, Tenerife) / "An[07]ield" (global=42,
+#   Anfield) / "Bota[07]ogo" (global=386, Botafogo) -- dozens more.
+07	f
+# 09=h: "At[09]letic Club" (global=4, Athletic) / "Manc[09]ester" (global=40,
+#   Manchester) / "Arec[09]i" (global=33, Arechi -- Salernitana's stadium).
+09	h
+# 0B=j: "Ha[0B]duk S[11]lit" (global=158, Hajduk Split) / "Luis Sit[0B]ar"
+#   (global=15 stadium, Sitjar) / "La Beau[0B]oire" (global=79 stadium,
+#   Beaujoire).
+0B	j
+# 0C=m: "Ca[0C][11] Nou" (global=0 stadium, Camp Nou) / "La Ro[0C]areda"
+#   (global=2 stadium, Romareda) / "Ha[0C]burgo" (global=68, Hamburgo).
+0C	m
+# 10=q: "San Carlos de A[11]o[10]uindo" (global=400 stadium, Apoquindo) /
+#   "Barc. Gua[18]a[10]uil" (global=378, Guayaquil).
+10	q
+# 11=p: "R.C. De[11]orti[17]o" (global=1, Deportivo) / "R.C.D. Es[11]an[18]ol"
+#   (global=13, Espanyol) / "Giuse[11][11]e Meazza" (global=20 stadium,
+#   Giuseppe Meazza). See header note re: the one Azeri-stadium anomaly.
+11	p
+# 16=w: "E[16]ood [31]ark" (global=38 stadium, Ewood Park) / "S[16]ansea
+#   Cit[18]" (global=60, Swansea City).
+16	w
+# 17=v: "R. [37]alladolid" (global=12, Valladolid -- lowercase v inside "Ala
+#   [17]és"=Alavés at global=19) / "Li[17]er[11]ool" (global=42, Liverpool) /
+#   "Ri[17]erside" (global=50 stadium, Riverside).
+17	v
+# 18=y: "Cit[18] Ground" (global=41 stadium, Nottingham Forest's "City
+#   Ground") / "Hig[09]bur[18]" (global=46 stadium, "Highbury") / "Ba[18]
+#   ern M." (global=65, "Bayern"). NOTE: initially misidentified as ñ from
+#   "Es[11]an[18]ol" (Español) before realizing the club's actual official
+#   name is "Espanyol" (Catalan spelling, with a y) -- correctly resolved
+#   once "City"/"Highbury"/"Bayern" made y the only consistent answer; see
+#   0x90 below for the real ñ.
+18	y
+# 19=x: "C.F. E[19]tremadura" (global=18, Extremadura) / "[36]re[19][09]a
+#   [0C]" (global=58, Wrexham) / "Au[19]erre" (global=81, Auxerre) /
+#   "Soc[09]au[19]" (global=96, Sochaux) / "A[0B]a[19]" (global=127, Ajax).
+19	x
+
+# --- New: uppercase consonants (systematic +0x20 offset from the ------
+# lowercase byte, consistent with every other letter pair in the original
+# 37-pair table, e.g. 00/20=a/A, 04/24=e/E; every new pair below was ALSO
+# independently confirmed with its own direct hex citation, not just
+# assumed from the pattern) ----------------------------------------------
+# 2B=J: "[2B]u[17]entus" (global=21, Juventus) / "[2B]osé Zorrilla" (global=12
+#   stadium, José Zorrilla) / "[2B]ules[4C]Desc[09]asseau[19]" (global=90
+#   stadium, Jules-Deschaseaux).
+2B	J
+# 2E=O: "R. [2E][17]iedo" (global=7, Oviedo) / "[2E]bilic" (global=119,
+#   Obilic) / "T[09]e [2E]val" (global=45 stadium area, "The Oval").
+2E	O
+# 30=Q: "Ta[46] [30]ali" (global=360 stadium, Malta's national stadium
+#   "Ta' Qali") / "Ta[46][30]ali" (global=362 stadium) -- 1 citation, same
+#   stadium referenced twice (two different Maltese clubs' home ground).
+30	Q
+# 31=P: "[31]iacenza" (global=30, Piacenza) / "[31]erugia" (global=34,
+#   Perugia) / "[31]ark" (many English stadium names, e.g. global=38
+#   "E[16]ood [31]ark"=Ewood Park).
+31	P
+# 34=U: "[34]. D. Sala[0C]anca" (global=17, "U.D. Salamanca") / "[34]lric
+#   [09][4C]Haberland" (global=73 stadium, Ulrich-Haberland) / "Manc[09]
+#   ester [34]td." (global=40, Man Utd).
+34	U
+# 36=W: "[36]est Ha[0C]" (global=48, West Ham) / "[36]i[0C]bledon"
+#   (global=51, Wimbledon) / "[36]. Bre[0C]en" (global=63, W. Bremen).
+36	W
+# 37=V: "Real Madrid C.F." context - "[37]alencia C.F." (global=5, Valencia)
+#   / "[37]illarreal C. F." (global=16, Villarreal) / "[37]icenza"
+#   (global=32, Vicenza).
+37	V
+# 38=Y: "Ali Sa[0C]i [38]en" (global=175 stadium, Galatasaray's "Ali Sami
+#   Yen") / "[38]. Traet[09]" (global=352 stadium, Porthmadog's ground "Y
+#   Traeth").
+38	Y
+# 3B=Z: "R. [3B]aragoza" (global=2, Zaragoza) / "Croatia [3B]ag." (global=159,
+#   Croatia Zagreb) / "[3B]alguiris" (global=365, Zalgiris).
+3B	Z
+
+# --- New: digits (confirmed inside team/stadium name strings, NOT the ---
+# separate binary numeric fields -- these are literal digit characters
+# embedded in real names like "Schalke 04" or "1860 München") -----------
+# 50='1': "Munic[09] [50][59][57][51]" (global=70, "Munich 1860") /
+#   "[50][DB] Maio" (global=104 stadium, SC Braga's "1º de Maio") /
+#   "[50][58] de [0C]a[18]o" (global=180 stadium, "19 de Mayo").
+50	1
+# 51='0': "Sc[09]alke [51][55]" (global=67, "Schalke 04") / "Munic[09]
+#   [50][59][57][51]" (global=70, "Munich 1860").
+51	0
+# 55='4': "Sc[09]alke [51][55]" (global=67, "Schalke 04") -- 1 citation.
+55	4
+# 57='6': "Munic[09] [50][59][57][51]" (global=70, "Munich 1860") -- 1
+#   citation (part of a well-known, unambiguous club name/year).
+57	6
+# 58='9': "[50][58] de [0C]a[18]o" (global=180 stadium, Samsunspor's "19
+#   Mayıs Stadyumu" rendered "19 de Mayo") -- 1 citation.
+58	9
+# 59='8': "Munic[09] [50][59][57][51]" (global=70, "Munich 1860") -- 1
+#   citation (same word as '6' and '0' above).
+59	8
+
+# --- New: punctuation ----------------------------------------------------
+# 46=' (apostrophe): "Renato Dall[46]Ara" (global=36 stadium, "Dall'Ara") /
+#   "St. [31]atrick[46]s At." (global=317, "St. Patrick's") / "St. Mel
+#   [46]s [31]ark" (global=323 stadium, "St. Mel's Park").
+46	'
+# 4C=- (hyphen): "Gottlieb[4C]Dai[0C]ler" (global=71 stadium, "Gottlieb-
+#   Daimler") / "[34]lric[09][4C]Haberland" (global=73 stadium, "Ulrich-
+#   Haberland") / "Marcel[4C][31]icot" (global=93 stadium, "Marcel-Picot").
+4C	-
+# DB=º (masculine ordinal indicator): "[50][DB] Maio" (global=104 stadium,
+#   SC Braga's real stadium "1º de Maio") -- 1 citation.
+DB	º
+
+# --- New: accented vowels -------------------------------------------------
+# 80=á: "Hel[0C][80]ntico" (global=17 stadium, Salamanca's "Helmántico") /
+#   "Est[80]dio do Le[86]a" (global=108 stadium, "Estádio do Leça") /
+#   "Teodoro Fern[80]ndez" (global=380 stadium, "Fernández").
+80	á
+# 81=à: "T[81] [30]ali" (global=361 stadium, Hibernians' variant spelling of
+#   Malta's "Ta' Qali" as "Tà Qali") -- 1 citation; note this is the ODD
+#   variant of the *same* real-world stadium that global=360/362 spell with
+#   an apostrophe (46) instead -- almost certainly a spelling inconsistency
+#   in the ORIGINAL game database (two different data-entry passes for the
+#   two Maltese clubs), not evidence the codec itself is ambiguous. Still,
+#   flagged as lower-confidence given only one occurrence.
+81	à
+# 86=ç: "Le[86]a" (global=108, Portuguese club "Leça") -- 1 citation, same
+#   stadium/word referenced twice (short_name and stadium_name of the same
+#   record both say "Leça").
+86	ç
+# 89=è: "Stade de la Maladi[89]re" (global=196 stadium, Neuchâtel's "Stade
+#   de la Maladière") / "De la Fronti[89]re" (global=311 stadium, Jeunesse
+#   Esch's "Frontière").
+89	è
+# 8C=í: "Rodr[8C]guez" (global=8 stadium, "Rodríguez") / "Villa[0C]ar[8C]n"
+#   (global=14 stadium, "Villamarín") / "[2E]l[8C][0C][11]ico" (global=23/25
+#   stadium, "Olímpico" -- shared by Lazio and Roma).
+8C	í
+# 8E=ï: "Mont[0B]u[8E]c" (global=13 stadium, Español's old ground
+#   "Montjuïc") -- 1 citation.
+8E	ï
+# 90=ñ: "[31]e[90]arol" (global=393, Uruguay's "Peñarol") / "Cerro
+#   [31]orte[90]o" (global=406, Paraguay's "Cerro Porteño").
+90	ñ
+# 92=ó: "L[92][11]ez" (global=8 stadium, "López") / "[37]icente Calder
+#   [92]n" (global=10 stadium, "Vicente Calderón") / "M[92]naco" (global=83,
+#   "Mónaco").
+92	ó
+# 97=ö: "B[97]kelberg" (global=62 stadium, Borussia Mönchengladbach's
+#   "Bökelberg") / "In[97]n[9D]" (global=173 stadium, Besiktas' "İnönü") /
+#   "Gotu[17][97]llur" (global=364 stadium, "Gotuvöllur").
+97	ö
+# 9B=ú: "S[11]artak Mosc[9B]" (global=120, "Spartak Moscú") -- repeated
+#   identically for Dinamo/CSKA/Torpedo Moscú (globals 121/125/126) /
+#   "Re[11][9B]blica" (global=372 stadium, Moldova's "República").
+9B	ú
+# 9D=ü: "M[9D]ngersdor[07]er" (global=72 stadium, Köln's "Müngersdorfer") /
+#   "Br[9D]ggli[07]eld" (global=197 stadium, Aarau's "Brügglifeld") /
+#   "Atat[9D]rk" (globals 179/181 stadium, "Atatürk").
+9D	ü

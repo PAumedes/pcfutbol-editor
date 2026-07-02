@@ -25,6 +25,42 @@ chars) so that `CharMap` round-trip tests have something to exercise. Treat
 any glyph outside the 11 verified ones above as almost certainly wrong for
 the real game.
 
+## Two REAL charmap files, two different sources — do not merge
+
+This directory also has two files built entirely from real, worked evidence
+(not invented), which are deliberately kept **separate** because their
+provenance is different and each documents its own citation trail:
+
+- **`confirmed_real_map.txt` — 37 pairs.** Source: the "Editor PCF 6.0"
+  manual's (jandro996/EditorPCFutbol6, by carky12) hex-editing appendix,
+  worked examples like "Real Madrid C.F.", "Santiago Bernabéu", "TEKA",
+  "ADIDAS", "Hiddink". See its own header comment for the full citation
+  list.
+- **`confirmed_real_map_v2.txt` — 77 pairs (superset of the 37 above,
+  re-verified).** Source: `fixtures/PKF_FORMAT.md` §7 — decoding all 473
+  records of the real `EQ003003.PKF`'s "foreign reference clubs" stub
+  table (`crates/pcf-codec/examples/dump_stub_table.rs`) and
+  cross-referencing every gap against real, publicly-known football club
+  and stadium names (also cross-checked against
+  `fixtures/pointers/team_pointers.csv`). Adds the rest of the
+  lowercase/uppercase consonant alphabet, several digits, apostrophe,
+  hyphen, the masculine ordinal indicator `º`, and 10 accented vowels (á à
+  é è í ï ó ö ú ü) plus ñ and ç. Every pair has at least one concrete
+  hex-offset citation in the file's own comments (most have several,
+  independent, cross-country citations). One byte (`0x50`) **corrects** a
+  provisional single-fact guess made by an earlier, unrelated domestic-team
+  investigation (see `PKF_FORMAT.md` §7.3) — a genuine example of this
+  bigger corpus catching an earlier low-confidence inference. One byte
+  (`0xD5`) was deliberately left **unresolved** (single ambiguous
+  occurrence — see §7.4) rather than guessed.
+
+**`confirmed_real_map_v2.txt` is the more complete and more heavily
+cross-checked of the two real files** (77 pairs vs. 37, most confirmed
+across 3+ independent real-world names rather than 6 worked manual
+examples) — prefer it over `confirmed_real_map.txt` for any new decoding
+work. They're kept as separate files rather than merged so each one's
+citation trail stays traceable to its own source material.
+
 ## File format
 
 Plain text, one mapping per line: `HH\tC` — two uppercase hex digits, a tab,

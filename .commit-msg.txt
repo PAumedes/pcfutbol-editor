@@ -1,0 +1,49 @@
+investigate_pkf: map domestic team structure, expand charmap to 77 pairs
+
+Two parallel investigation passes, both fully documented in
+fixtures/PKF_FORMAT.md (new sections 6 and 7):
+
+Domestic team structure (crates/pcf-codec/examples/investigate_domestic_
+team.rs): walked the likely-River container blob byte-by-byte. Confirmed
+high-confidence via 5 independently-checkable real-world facts: stadium
+name "Antonio Vespucio Liberti" (exact), legal name "Club Atletico River
+Plate" (exact), capacity 76,687 (matches the real Estadio Monumental
+figure exactly), founded 1901 (exact), president "Alfredo Angel Davicce"
+(River's real 1997-2001 president). Also confirmed the coach chain start
+via a real name match: "Ramon Diaz" (River's real 1998 head coach).
+Located a first plausible player-record marker (medium-high confidence)
+and estimated ~20-28 players in the roster (low-medium confidence, not
+individually verified). The container's internal per-record framing
+differs from pcf-codec's override-file format in several small,
+documented ways (extra bytes at two field boundaries, a 2-byte coach
+marker instead of 1-byte, a shorter player header) - flagged, not
+guessed at or forced through existing parsing logic.
+
+Charmap expansion (crates/pcf-codec/examples/dump_stub_table.rs,
+fixtures/charmap/confirmed_real_map_v2.txt): decoded all 473 records of
+the "foreign reference clubs" stub table found in the prior investigation
+pass, cross-referencing every gap against real football club/stadium
+names. Grew the confirmed charmap from 37 to 77 byte-glyph pairs, every
+one with hex-offset citations, cross-checked against ~940 decoded string
+fields with zero contradictions in the alphabet itself. Caught and
+corrected one real error along the way: byte 0x50 had been provisionally
+guessed as '0' from a single ambiguous field in the domestic-team
+investigation; this larger corpus found 3 independent real-name
+citations all requiring 0x50='1' instead. One byte (0xD5) was left
+deliberately unresolved rather than guessed (single ambiguous
+occurrence). One data anomaly in the original 1998 game's own database
+was flagged as a curiosity, not a codec issue (a p/q transliteration
+mixup in one Azerbaijani stadium name).
+
+Kept as a separate confirmed_real_map_v2.txt rather than merging into
+confirmed_real_map.txt, since the two files have different, independently
+traceable provenance (manual worked examples vs. stub-table
+cross-reference) - see fixtures/charmap/README.md for guidance on which
+to prefer (v2, the larger and more cross-checked of the two).
+
+No production parsing code (pcf-codec's dbc.rs) was touched - this
+remains investigation/documentation work. All new example tools compile
+cleanly and don't affect any existing test. Whole-workspace
+re-verification: cargo test --workspace (79 passed), fmt/clippy clean.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
