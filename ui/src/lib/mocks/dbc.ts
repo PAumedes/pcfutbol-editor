@@ -3,9 +3,11 @@
 
 import type { Dbc, TeamIndex } from "../model";
 
+// Country code 3 = Argentina, pointer 9013 = Boca / 9001 = River — both
+// confirmed against real reference data, see fixtures/pointers/*.csv.
 export const mockTeamIndex: TeamIndex = [
-  { pointer: 9013, shortName: "BOCA", country: 1 },
-  { pointer: 9014, shortName: "RIVER", country: 1 },
+  { pointer: 9013, shortName: "BOCA", country: 3 },
+  { pointer: 9001, shortName: "RIVER", country: 3 },
 ];
 
 export const mockDbc: Dbc = {
@@ -14,7 +16,7 @@ export const mockDbc: Dbc = {
     shortName: "BOCA",
     stadiumName: "LA BOMBONERA",
     longName: "CLUB ATLETICO BOCA JUNIORS",
-    country: 1,
+    country: 3,
     capacity: 49000,
     standingCapacity: 0,
     founded: 1905,
@@ -76,14 +78,14 @@ export const mockDbc: Dbc = {
       slot: 0,
       origin: 0,
       roles: ["cf", "empty", "empty", "empty", "empty", "empty"],
-      nationality: 1,
+      nationality: 3,
       skin: "white",
       hair: "dark",
       demarcation: "fwd",
       birth: { day: 5, month: 11, year: 1973 },
       heightCm: 178,
       weightKg: 78,
-      birthCountry: 1,
+      birthCountry: 3,
       birthplace: "AVELLANEDA",
       debutClub: "x",
       international: "x",

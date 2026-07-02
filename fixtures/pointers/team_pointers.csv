@@ -1,0 +1,1369 @@
+# Real team-pointer table, transcribed from carky12's "Punteros Equipos.pdf"
+# (jandro996/EditorPCFutbol6 repo, Manuales/Punteros Equipos.pdf).
+# Community reference data (4-digit decimal pointer -> team name/country),
+# not proprietary Dinamic game content -- see PLAN.md Appendix C / §9 and
+# fixtures/README.md. Confirms pointers/team_filename's EQ97+pointer
+# convention: e.g. Boca = 9013 -> EQ979013.DBC (already implemented in
+# crates/pcf-model/src/pointers.rs).
+pointer,name,country
+0001,Barcelona,España
+0002,Depor,España
+0003,Zaragoza,España
+0004,R. Madrid,España
+0005,Athletic,España
+0006,Sevilla,España
+0007,Valencia,España
+0008,Racing,España
+0009,Oviedo,España
+0010,Tenerife,España
+0011,R. Sociedad,España
+0012,At. Madrid,España
+0013,Albacete,España
+0014,Sporting,España
+0015,Celta,España
+0016,Logroñés,España
+0017,Valladolid,España
+0018,Espanyol,España
+0019,Betis,España
+0020,Compostela,España
+0021,Rayo,España
+0022,Lleida,España
+0023,Osasuna,España
+0024,Toledo,España
+0025,Mallorca,España
+0026,R. Madrid B,España
+0027,Hércules,España
+0028,Barcelona B,España
+0029,Mérida,España
+0030,Eibar,España
+0031,Badajoz,España
+0032,Marbella,España
+0033,Palamós,España
+0034,Athletic B,España
+0035,Leganés,España
+0036,Villarreal,España
+0037,Getafe,España
+0038,Salamaca,España
+0039,Orense,España
+0040,Extremadura,España
+0041,Ferrol,España
+0042,Mensajero,España
+0043,Las Palmas,España
+0044,Pontevedra,España
+0045,Langreo,España
+0046,Moscardó,España
+0047,S. Sebastián de los Reyes,España
+0048,Alavés,España
+0049,Sestao,España
+0050,Almería,España
+0051,Écija,España
+0052,Numancia,España
+0053,Avilés,España
+0054,Beasaín,España
+0055,Levante,España
+0056,Lugo,España
+0057,Real Unión,España
+0058,Izarra,España
+0059,Lemona,España
+0060,Palencia,España
+0061,Gramenet,España
+0062,Castellón,España
+0063,Manlleu,España
+0064,Elche,España
+0065,Andorra,España
+0066,Alcoyano,España
+0067,Córdoba,España
+0068,Real Jaén,España
+0069,Talavera,España
+0070,Yeclano,España
+0071,Xerez,España
+0072,Cádiz,España
+0073,Móstoles,España
+0074,Aranjuez,España
+0075,Amurrio,España
+0076,Barakaldo,España
+0077,Bermeo,España
+0078,Tudelano,España
+0079,Figueres,España
+0080,Sabadell,España
+0081,Hospitalet,España
+0082,Terrassa,España
+0083,Benidorm,España
+0084,Melilla,España
+0085,Granada,España
+0086,Recreativo de Huelva,España
+0087,Mármol Macael,España
+0088,Cartagena,España
+0089,Sant Andreu,España
+0090,Casetas,España
+0091,Fuenlabrada,España
+0092,Nàstic,España
+0093,Polideportivo Almería,España
+0094,Ávila,España
+0095,Manchego,España
+0096,Cacereño,España
+0097,San Roque,España
+0098,R. Madrid C,España
+0099,Depor B,España
+0100,Mallorca B,España
+0101,Marino,España
+0102,Celta B,España
+0103,Endesa As Pontes,España
+0104,Oviedo B,España
+0105,Carabanchel,España
+0106,Sporting B,España
+0107,Huesca,España
+0108,Osasuna B,España
+0109,Cultural Leonesa,España
+0110,R. Sociedad B,España
+0111,Aurrerá,España
+0112,Logroñes B,España
+0113,Zaragoza B,España
+0114,Gernika,España
+0115,Valladolid B,España
+0116,Zalla,España
+0117,G. Torrelavega,España
+0118,Mar Menor,España
+0119,Gandía,España
+0120,Llíria,España
+0121,Murcia,España
+0122,Gavà,España
+0123,Espanyol B,España
+0124,Realejos,España
+0125,Vélez,España
+0126,Gáldar,España
+0127,Polideportivo Ejido,España
+0128,San Pedro,España
+0129,Málaga,España
+0130,Sevilla B,España
+0131,Betis B,España
+0132,Guadix,España
+0133,Atlético B,España
+0134,Zamudio,España
+0135,Valencia B,España
+0136,Torrejón,España
+0137,RSD Alcalá,España
+0138,Arandina,España
+0139,Coria,España
+0140,Elgoibar,España
+0141,Burgos,España
+0142,Leganés B,España
+0143,Zamora,España
+0144,Caudal,España
+0145,Majadahonda,España
+0146,Racing B,España
+0147,Endesa Andorra,España
+0148,Lorca,España
+0149,Novelda,España
+0150,Sóller,España
+0151,Ontinyent,España
+0152,Motril,España
+0153,Plasencia,España
+0154,Moralo,España
+0155,Isla Cristina,España
+0156,Playas Jandía,España
+0201,Milan,Italia
+0202,Juventus,Italia
+0203,Sampdoria,Italia
+0204,Lazio,Italia
+0205,Parma,Italia
+0206,Napoles,Italia
+0207,Roma,Italia
+0208,Torino,Italia
+0209,Foggia,Italia
+0210,Cremonese,Italia
+0211,Genoa,Italia
+0212,Cagliari,Italia
+0213,Inter,Italia
+0214,Reggiana,Italia
+0215,Fiorentina,Italia
+0216,Bari,Italia
+0217,Brescia,Italia
+0218,Padua,Italia
+0219,Piacenza,Italia
+0220,Udinese,Italia
+0221,Vicenza,Italia
+0222,Atalanta,Italia
+0223,Salernitana,Italia
+0224,Ancona,Italia
+0225,Perugia,Italia
+0226,Cesena,Italia
+0227,Venecia,Italia
+0228,Verona,Italia
+0229,Pescara,Italia
+0230,Fidelis Andria,Italia
+0231,Chievo Verona,Italia
+0232,Palermo,Italia
+0233,Lucchese,Italia
+0234,Cosenza,Italia
+0235,Avelino,Italia
+0236,Bolonia,Italia
+0237,Pistoiese,Italia
+0238,Reggina,Italia
+0240,Trapani,Italia
+0242,Como,Italia
+0243,Gualdo,Italia
+0244,Fiorenzuola,Italia
+0245,Ascoli,Italia
+0246,Lecce,Italia
+0247,Monza,Italia
+0248,Acireale,Italia
+0249,Castel di Sangro,Italia
+0250,Empoli,Italia
+0251,Ravenna,Italia
+0252,Alessandria,Italia
+0253,Alzano,Italia
+0254,Brescello,Italia
+0255,Carpi,Italia
+0256,Carrarese,Italia
+0257,Modena,Italia
+0258,Montevarchi,Italia
+0259,Novara,Italia
+0260,Prato,Italia
+0261,Saronno,Italia
+0262,Siena,Italia
+0263,Spal,Italia
+0264,Spezia,Italia
+0265,Treviso,Italia
+0266,Avezzano,Italia
+0267,Casarano,Italia
+0268,Catania,Italia
+0269,Fermana,Italia
+0270,Giulianova,Italia
+0271,Ischia,Italia
+0272,Juve Stabia,Italia
+0273,Lodigiani,Italia
+0274,Nocerina,Italia
+0275,Savoia,Italia
+0276,Sora,Italia
+0301,Blackburn,Inglaterra
+0302,Everton,Inglaterra
+0303,Man Utd,Inglaterra
+0304,Nottingham,Inglaterra
+0305,Liverpool,Inglaterra
+0306,Leeds,Inglaterra
+0307,Newcastle,Inglaterra
+0308,Aston Villa,Inglaterra
+0309,Arsenal,Inglaterra
+0310,Tottenham,Inglaterra
+0311,West Ham,Inglaterra
+0312,Chelsea,Inglaterra
+0313,Middlesbrough,Inglaterra
+0314,Wimbledon,Inglaterra
+0315,Sheffield W.,Inglaterra
+0316,Coventry,Inglaterra
+0317,Southampton,Inglaterra
+0318,Sunderland,Inglaterra
+0319,Derby County,Inglaterra
+0320,Leicester,Inglaterra
+0321,QPR,Inglaterra
+0322,Bolton,Inglaterra
+0323,Manchester C,Inglaterra
+0324,Southend U,Inglaterra
+0325,Birmingham C,Inglaterra
+0326,Crystal P,Inglaterra
+0327,Grimsby T,Inglaterra
+0328,Huddersfield T,Inglaterra
+0329,Ipswich,Inglaterra
+0330,Swindon,Inglaterra
+0331,Barnsley,Inglaterra
+0332,Bradford C,Inglaterra
+0333,Charlton,Inglaterra
+0334,Norwich C,Inglaterra
+0335,Oldham Ath,Inglaterra
+0336,Port Vale,Inglaterra
+0337,Portsmouth,Inglaterra
+0338,Reading,Inglaterra
+0339,Oxford U,Inglaterra
+0340,Sheffield U,Inglaterra
+0341,Stoke City,Inglaterra
+0342,Tranmere Rov,Inglaterra
+0343,West Bromwich (WBA),Inglaterra
+0344,Wolverhampton,Inglaterra
+0345,Blackpool,Inglaterra
+0346,Bournemouth,Inglaterra
+0347,Brentford,Inglaterra
+0348,Bristol City,Inglaterra
+0349,Bristol Rovers,Inglaterra
+0350,Burnley,Inglaterra
+0351,Bury,Inglaterra
+0352,Chesterfield,Inglaterra
+0353,Crewe Alex.,Inglaterra
+0354,Gillingham,Inglaterra
+0355,Luton T,Inglaterra
+0356,Millwall,Inglaterra
+0357,Notts C,Inglaterra
+0358,Peterborough,Inglaterra
+0359,Plymouth Arg.,Inglaterra
+0360,Preston NE,Inglaterra
+0361,Rotherham U,Inglaterra
+0362,Shrewsbury,Inglaterra
+0363,Stockport C,Inglaterra
+0364,Walsall,Inglaterra
+0365,Watford,Inglaterra
+0366,Wrexham,Inglaterra
+0367,Wycombe W,Inglaterra
+0368,York City,Inglaterra
+0369,Barnet,Inglaterra
+0370,Brighton & HA,Inglaterra
+0371,Cambridge U,Inglaterra
+0372,Cardiff C,Inglaterra
+0373,Carlisle U,Inglaterra
+0374,Chester C,Inglaterra
+0375,Colchester U,Inglaterra
+0376,Darlington,Inglaterra
+0377,Doncaster,Inglaterra
+0378,Exeter,Inglaterra
+0379,Fulham,Inglaterra
+0380,Hartlepool,Inglaterra
+0381,Hereford,Inglaterra
+0382,Hull,Inglaterra
+0383,Leyton,Inglaterra
+0384,Lincoln,Inglaterra
+0385,Mansfield,Inglaterra
+0386,Northampton,Inglaterra
+0387,Rochdale,Inglaterra
+0388,Scarborough,Inglaterra
+0389,Scunthorpe,Inglaterra
+0390,Swansea C,Inglaterra
+0391,Torquay U,Inglaterra
+0392,Wigan Ath,Inglaterra
+0401,Borussia D.,Alemania
+0402,Borussia M.,Alemania
+0403,W. Bremen,Alemania
+0404,Kaiserslautern,Alemania
+0405,Friburgo,Alemania
+0406,Bayern M.,Alemania
+0407,Karlsruhe,Alemania
+0408,Schalke 04,Alemania
+0409,Hamburgo,Alemania
+0410,Hansa Rostock,Alemania
+0411,Munich 1860,Alemania
+0412,Stuttgart,Alemania
+0413,Colonia,Alemania
+0414,Fortuna Düsseldorf,Alemania
+0415,Bayer Leverkusen,Alemania
+0416,Saint Pauli,Alemania
+0417,Bochum,Alemania
+0418,Arminia Bielefeld,Alemania
+0419,Duisburg,Alemania
+0420,Wolfsburg,Alemania
+0421,Hertha Berlín,Alemania
+0501,Nantes,Francia
+0502,PSG,Francia
+0503,Auxerre,Francia
+0504,Lens,Francia
+0505,Monaco,Francia
+0506,Lyon,Francia
+0507,Strasburgo,Francia
+0508,Girondins,Francia
+0509,Montpellier,Francia
+0510,Metz,Francia
+0511,Nimes,Francia
+0512,Guingamp,Francia
+0513,Rennes,Francia
+0514,Niza,Francia
+0515,Le Havre,Francia
+0516,Cannes,Francia
+0517,Bastia,Francia
+0518,Lille,Francia
+0519,Caen,Francia
+0520,Olympique de Marsella,Francia
+0521,Nancy,Francia
+0522,Châteauroux,Francia
+0523,Toulouse,Francia
+0601,Oporto,Portugal
+0602,Sp. Lisboa,Portugal
+0603,Benfica,Portugal
+0604,V. Guimaraes,Portugal
+0605,Farense,Portugal
+0606,Boavista,Portugal
+0607,Os Belenenses,Portugal
+0608,Uniao Leiria,Portugal
+0609,SC Braga,Portugal
+0610,Marítimo,Portugal
+0611,Gil Vicente,Portugal
+0612,Salgueiros,Portugal
+0613,Estrela Amadora,Portugal
+0614,Leça,Portugal
+0615,Chaves,Portugal
+0616,Río Ave,Portugal
+0617,Vitoria Setubal,Portugal
+0618,Espinho,Portugal
+0619,Varzim,Portugal
+0620,Coimbra,Portugal
+0621,Campomaiorense,Portugal
+0701,Estrella Roja (Crvena Zvezda Beograd),Yugoslavia
+0702,RAD Belgrado,Yugoslavia
+0703,Partizán,Yugoslavia
+0704,Vojvodina,Yugoslavia
+0705,Zemun,Yugoslavia
+0706,Becej,Yugoslavia
+0707,Obilic Belgrado,Yugoslavia
+0708,Mladost Lucani,Yugoslavia
+0709,Proleter Zrenjanin,Yugoslavia
+0710,Hajduk Kula,Yugoslavia
+0711,Cukaricki Stankom,Yugoslavia
+0712,Buducnost Podgorica,Yugoslavia
+0713,Borac Cacak,Yugoslavia
+0751,Spa. Moscú,Rusia
+0752,Dinamo Moscú,Rusia
+0753,Rotor,Rusia
+0754,Alania Vladikavkav,Rusia
+0755,Lokomotiv Moscú,Rusia
+0756,CSKA Moscú,Rusia
+0757,Torpedo Moscú,Rusia
+0758,Zenit,Rusia
+0801,Ajax,Holanda
+0802,Feyenoord,Holanda
+0803,Roda,Holanda
+0804,PSV,Holanda
+0805,Vitesse,Holanda
+0806,Sparta,Holanda
+0807,Heerenveen,Holanda
+0808,NAC,Holanda
+0809,Groningen,Holanda
+0810,Twente,Holanda
+0811,RKC,Holanda
+0812,Willem II,Holanda
+0813,Fortuna Sittard,Holanda
+0814,De Graafschap,Holanda
+0815,Utrech,Holanda
+0816,Vodendam,Holanda
+0817,NEC,Holanda
+0818,AZ,Holanda
+0819,Maastricht,Holanda
+0851,Anderlecht,Bélgica
+0852,Brujas,Bélgica
+0853,Standard Lieja,Bélgica
+0854,Lierse,Bélgica
+0855,Alost,Bélgica
+0856,G. Ekeren (Germinal Beerschot),Bélgica
+0857,C. de Brujas,Bélgica
+0858,Molenbeek,Bélgica
+0859,Charleroi,Bélgica
+0860,Lommelse,Bélgica
+0861,Mechelen (Malines),Bélgica
+0862,Harelbeke,Bélgica
+0863,R. Antwerp,Bélgica
+0864,Gent (KAA Gent / La Grantoise),Bélgica
+0865,Sint Truidense (St-Trond),Bélgica
+0866,Excelsior Mouscron,Bélgica
+0867,Genk (RKC Genk),Bélgica
+0868,Lokeren,Bélgica
+0901,Hajduk Split,Croacia
+0902,Croatia Zagreb (Dinamo Zagreb),Croacia
+0903,Osijek,Croacia
+0904,Varteks,Croacia
+0905,Zagreb,Croacia
+0906,Rijeka,Croacia
+0907,Slaven Belupo,Croacia
+0908,Cibalia Vinkovci,Croacia
+0909,Mladost Suhopolje,Croacia
+0910,Hrvatski Dragovoljac,Croacia
+0911,Sibenik,Croacia
+0912,Suhopolje,Croacia
+0913,Zadar,Croacia
+0914,Segesta Sisak,Croacia
+0915,Marsonia,Croacia
+0916,Istra Pula,Croacia
+0917,Inter Zapresic,Croacia
+0951,Göteborg,Suecia
+0952,Halmstads,Suecia
+0953,Orebro,Suecia
+0954,Malmoe,Suecia
+0955,AIK Estoc.,Suecia
+0956,Helsingborgs,Suecia
+0957,Djugardens,Suecia
+0958,Orgryte,Suecia
+0959,Degerfors,Suecia
+0960,Trelleborgs,Suecia
+0961,Norrkoping,Suecia
+0962,Elfsborg,Suecia
+1001,Besiktas,Turquía
+1002,Trabzonspor,Turquía
+1003,Galatasaray,Turquía
+1004,Fenerbahce,Turquía
+1005,Kocaelispor,Turquía
+1006,Gaziantepspor,Turquía
+1007,Antalyaspor,Turquía
+1008,Samsunspor,Turquía
+1009,Bursaspor,Turquía
+1010,Istanbulspor,Turquía
+1011,Gençlerbirligi,Turquía
+1012,Ankaragücü,Turquía
+1013,Vanspor,Turquía
+1014,Altay Izmir,Turquía
+1015,Canakkale Dardanelspor,Turquía
+1016,Sariyer,Turquía
+1017,Denizlispor,Turquía
+1018,Zeytinburnuspor,Turquía
+1051,Legia Varsovia,Polonia
+1052,Katowice,Polonia
+1053,Widzew Lodz,Polonia
+1054,Zaglebie Lubin,Polonia
+1055,Ruch Chorzow,Polonia
+1056,Hutnik Cracovia,Polonia
+1057,LKS Lodz,Polonia
+1058,Amika Wronki,Polonia
+1059,Lech Poznan,Polonia
+1060,Gornik Zabrze,Polonia
+1061,Stomil Olsztyn (OKS Olsztyn),Polonia
+1062,Polonia Varsovia,Polonia
+1063,GKS Tychy,Polonia
+1064,Rakow Czestochowa,Polonia
+1065,Kispest-Honvéd (ara Budapest Honved),Polonia
+1101,Grasshopper,Suiza
+1102,Sion,Suiza
+1103,Lugano,Suiza
+1104,Neuchatel,Suiza
+1105,Aarau,Suiza
+1106,Luzern,Suiza
+1107,Basel,Suiza
+1108,Servette,Suiza
+1109,St. Gallen,Suiza
+1110,Lausanne S.,Suiza
+1111,Zurich,Suiza
+1112,Young Boys,Suiza
+1151,Casino Salzsburg,Austria
+1152,Rapid Viena,Austria
+1153,Sturm Graz,Austria
+1154,Austria Wien (ex-Austria M),Austria
+1155,Tirol,Austria
+1156,Grazer (ex-Casino Graz),Austria
+1157,LASK Linz,Austria
+1158,SV Ried,Austria
+1159,Admira Wacker,Austria
+1160,FC Linz,Austria
+1201,Aalborg,Dinamarca
+1202,Copenaghen,Dinamarca
+1203,Brondby,Dinamarca
+1204,Silkeborg,Dinamarca
+1205,Aarhus,Dinamarca
+1206,Odense,Dinamarca
+1207,Lyngby,Dinamarca
+1208,Viborg FF,Dinamarca
+1209,Vejle BK,Dinamarca
+1210,Herfolge BK,Dinamarca
+1211,Ikast FS,Dinamarca
+1212,Naestved BK,Dinamarca
+1213,Fremad,Dinamarca
+1214,Akademisk B.,Dinamarca
+1251,G. Rangers,Escocia
+1252,C. Glasgow,Escocia
+1253,Motherwell,Escocia
+1254,Hibernian,Escocia
+1255,Aberdeen,Escocia
+1256,Heart of M.,Escocia
+1257,Raith R.,Escocia
+1258,Kilmarnock,Escocia
+1259,Dundee United,Escocia
+1260,Dunfermline Ath.,Escocia
+1261,St. Johnstone,Escocia
+1262,Dundee,Escocia
+1263,Saint Mirren,Escocia
+1264,Livingston,Escocia
+1265,Ayr,Escocia
+1266,Clyde,Escocia
+1267,Falkirk,Escocia
+1268,Morton,Escocia
+1269,Alloa,Escocia
+1270,Ross County,Escocia
+1271,Airdrie,Escocia
+1272,Inverness,Escocia
+1301,Panathinaikos,Grecia
+1302,AEK Atenas,Grecia
+1303,Olympiakos,Grecia
+1304,Apollon,Grecia
+1305,Iraklis,Grecia
+1306,OFI,Grecia
+1307,Paniliakos,Grecia
+1308,Aris,Grecia
+1309,Ionikos,Grecia
+1310,Edessaikos,Grecia
+1311,Athinaikos,Grecia
+1312,PAOK,Grecia
+1313,Panionios,Grecia
+1314,Kalamata,Grecia
+1315,Kavala,Grecia
+1316,Veria,Grecia
+1317,Skoda Xanthi,Grecia
+1318,Panachaiki,Grecia
+1319,Kastoria,Grecia
+1351,Rosenborg,Noruega
+1352,Molde FK,Noruega
+1353,Lillestrom,Noruega
+1354,Viking,Noruega
+1355,Bodo Glimt,Noruega
+1356,Brann,Noruega
+1357,Tromso,Noruega
+1358,Stromsgodset,Noruega
+1359,Valerenga,Noruega
+1360,Stabaek,Noruega
+1401,Steaua B.,Rumania
+1402,Petrolul (Petrolul Ploiesti),Rumania
+1403,Universitatea (Université Craiovie),Rumania
+1404,D. Bucarest,Rumania
+1405,Gloria Bistrita,Rumania
+1406,Rapid Bucarest,Rumania
+1407,National Bucarest (Progresul Bucarest),Rumania
+1408,Politechnica Timisoara,Rumania
+1409,Arges Pitesti,Rumania
+1410,Ceahlaul,Rumania
+1411,FC Brasov,Rumania
+1412,Bacau,Rumania
+1413,Farul Constanta,Rumania
+1414,Universitatea Cluj (no CFR Cluj),Rumania
+1415,Sportul Studentesc,Rumania
+1416,Jiul Petrosani,Rumania
+1417,FCM Targoviste (Chindia Târgoviste),Rumania
+1418,Otelul Galati,Rumania
+1451,Hradec Kralove,Rep. Checa
+1452,Sparta Praga,Rep. Checa
+1453,Slavia Praga,Rep. Checa
+1454,Sigma Olomouc,Rep. Checa
+1455,Jablonec N. Nisou,Rep. Checa
+1456,Petra Drnovice,Rep. Checa
+1457,Boby Brno,Rep. Checa
+1458,Banik Ostrava,Rep. Checa
+1459,Teplice,Rep. Checa
+1460,Slovan Liberec,Rep. Checa
+1461,Blsani,Rep. Checa
+1462,Dukla Pribram,Rep. Checa
+1463,Mlada Boleslav,Rep. Checa
+1464,Viktoria Zizkov,Rep. Checa
+1501,Lok. Sofia,Bulgaria
+1502,Levski Sofia,Bulgaria
+1503,Botev Plovdiv,Bulgaria
+1504,Slavia Sofia,Bulgaria
+1505,CSKA Sofía,Bulgaria
+1506,Lovech,Bulgaria
+1507,Neftochimik,Bulgaria
+1508,FC Velbazhd,Bulgaria
+1551,Slovan Bratislava,Eslovaquia
+1552,Inter Bratislava,Eslovaquia
+1553,Chemlon H.,Eslovaquia
+1554,Kosice,Eslovaquia
+1555,Trnava,Eslovaquia
+1556,Dukla Banska,Eslovaquia
+1557,Tatran Presov,Eslovaquia
+1558,Bardejov,Eslovaquia
+1559,Zilina,Eslovaquia
+1560,Artmedia Petrzalka,Eslovaquia
+1601,Mura,Eslovenia
+1602,Olimpia,Eslovenia
+1603,Maribor Branik,Eslovenia
+1604,Primorje,Eslovenia
+1605,Gorica,Eslovenia
+1606,Rudar Velenje,Eslovenia
+1607,Korotan,Eslovenia
+1651,Anorthosis Famagusta,Chipre
+1652,Apoel Nicosia,Chipre
+1653,Omonia Nicosia,Chipre
+1654,AEK Larnaca,Chipre
+1655,Apollon,Chipre
+1656,Nea Salamis,Chipre
+1701,Ferencvaros,Hungría
+1702,VAC Samsung,Hungría
+1703,Ujpesti Dozsa,Hungría
+1704,Kipest Honvéd (actual Budapest Honvéd),Hungría
+1705,BVSC,Hungría
+1706,Debreceni Vasutas (ex-DVSC Epona),Hungría
+1707,MTK,Hungría
+1708,Vasas CV,Hungría
+1709,Csepel,Hungría
+1710,Dunaferr,Hungría
+1711,Tatabanya,Hungría
+1712,Kerületi (III. Kerületi TVE),Hungría
+1713,Zalaegerszegi,Hungría
+1714,Videoton,Hungría
+1715,Györ,Hungría
+1716,Haladás,Hungría
+1717,Siófok,Hungría
+1718,Békéscsaba,Hungría
+1719,Stadler,Hungría
+1720,Pécs,Hungría
+1751,Shakhtar Donetsk,Ucrania
+1752,Dinamo Kiev,Ucrania
+1753,Chernomorets,Ucrania
+1754,Nyva Vinnytsya,Ucrania
+1755,CSKA Kiev,Ucrania
+1756,Kryvbas,Ucrania
+1757,Karpaty,Ucrania
+1758,Vorskla Poltava,Ucrania
+1801,Grevenmacher,Luxemburgo
+1802,Jeunesse,Luxemburgo
+1804,Avenir Beggen,Luxemburgo
+1805,Vaduz,Liechtenstein
+1851,Derry City,Irlanda
+1852,Dundalk,Irlanda
+1853,Shelbourne,Irlanda
+1854,St. Patrick's Athletic,Irlanda
+1855,Bohemians,Irlanda
+1856,Sligo Rovers,Irlanda
+1857,Shamrock Rovers,Irlanda
+1858,University College Dublin,Irlanda
+1859,Cork City,Irlanda
+1860,Athlone Town,Irlanda
+1861,Drogheda United,Irlanda
+1862,Galway United,Irlanda
+1901,Linfield,Irlanda del Norte
+1902,Crusaders,Irlanda del Norte
+1903,Glenavon,Irlanda del Norte
+1904,Portadown,Irlanda del Norte
+1905,Glentoran,Irlanda del Norte
+1906,Cliftonville,Irlanda del Norte
+1907,Ards,Irlanda del Norte
+1908,Bangor,Irlanda del Norte
+1909,Ballymena,Irlanda del Norte
+1910,Coleraine,Irlanda del Norte
+1911,Omagh,Irlanda del Norte
+1912,Newry Town,Irlanda del Norte
+1951,KR Reykjavik,Islandia
+1952,Akranes,Islandia
+1953,Fimleikafelag,Islandia
+1954,IBV,Islandia
+1955,Leiftur,Islandia
+2002,TPV Tampere (Tampereen Pallo-Veikot),Finlandia
+2003,MyPa,Finlandia
+2004,Haka,Finlandia
+2005,Jazz,Finlandia
+2006,HJK Helsinki,Finlandia
+2007,Jokerit,Finlandia
+2051,Welshpool Town,Gales
+2052,Bangor City,Gales
+2053,Afan Lido,Gales
+2054,Barry Town,Gales
+2055,Newton,Gales
+2056,Conwy United,Gales
+2057,Fflint Town,Gales
+2058,Caernarfon,Gales
+2059,Cwmbran,Gales
+2060,Inter Cardiff (Inter Cabletel),Gales
+2061,Caerswrs,Gales
+2062,Connah's Quay,Gales
+2063,Ebbw Vale,Gales
+2064,Llasantffraid,Gales
+2065,Porthmadog,Gales
+2066,Averyswyth Town,Gales
+2067,Ton Pentre,Gales
+2068,Rhyl FC,Gales
+2069,Holywell Town,Gales
+2070,Cemaes Bay,Gales
+2071,Carmarthen Town,Gales
+2072,Briton Ferry Athletic,Gales
+2101,Maccabi Tel Aviv,Israel
+2102,Maccabi Haifa,Israel
+2103,Hapoël Be'er-Sheva,Israel
+2104,Hapoël Tel-Aviv,Israel
+2105,Hapoel Petah Tikva,Israel
+2106,Beitar Jerusalén,Israel
+2107,Hapoël Haifa,Israel
+2108,Maccabi Petah-Tikva,Israel
+2109,Hapoel Kfar-Saba,Israel
+2110,Ironi Rishon LeZion,Israel
+2111,Bnei-Yehuda Tel-Aviv,Israel
+2112,Hapoel Beit-Shean,Israel
+2113,Hapoel Jerusalem,Israel
+2114,Maccabi Herzliya,Israel
+2115,Hapoel Tsafririm Holon,Israel
+2116,Hapoel Taibe,Israel
+2151,Valletta,Malta
+2152,Hibernians,Malta
+2153,Sliema,Malta
+2154,Floriana,Malta
+2155,Birkirkara,Malta
+2202,Klaksvikar Itrottarfelag,Islas Faroe
+2203,Gotu Itrottarfelag,Islas Faroe
+2204,HB Torshavn,Islas Faroe
+2205,B36 Torshavn,Islas Faroe
+2251,Zalguiris Vilnius,Lituania
+2252,Inkaras Kaunas,Lituania
+2253,Kareda S.,Lituania
+2254,FK Zalguiris Kaunas,Lituania
+2255,Ekranas Panevezys,Lituania
+2256,Atlantas,Lituania
+2401,Teuta,Albania
+2402,Partizan Tirana,Albania
+2403,SK Tirana,Albania
+2404,Tomori Berat,Albania
+2502,Dinamo Tbilisi,Georgia
+2503,Dinamo Batumi,Georgia
+2504,Lokomot. Tbilisi,Georgia
+2505,Torpedo Kutaisi,Georgia
+2506,Georgia Tbilisi,Georgia
+2553,Constructorul,Moldavia
+2554,Zimbru Chisinau,Moldavia
+2556,Nistru Otaci,Moldavia
+2601,Bolívar,Bolivia
+2602,The Strongest,Bolivia
+2603,Oriente Petrolero,Bolivia
+2604,Blooming,Bolivia
+2651,El Nacional,Ecuador
+2652,Emelec,Ecuador
+2653,Barcelona Guayaquil,Ecuador
+2654,Liga D. Univers.,Ecuador
+2701,Dinamo Minsk,Bielorrusia
+2751,Universitario,Perú
+2752,Alianza Lima,Perú
+2753,Sporting Cristal,Perú
+2800,Flamengo,Brasil
+2801,Vasco da Gama,Brasil
+2802,Palmeiras,Brasil
+2803,Botafogo,Brasil
+2804,Sao Paulo,Brasil
+2805,Gremio,Brasil
+2806,Corinthians,Brasil
+2807,Santos,Brasil
+2808,Fluminense,Brasil
+2809,Cruzeiro,Brasil
+2810,At. Paranaense,Brasil
+2811,Juventude,Brasil
+2812,Atlético Mineiro,Brasil
+2813,Portuguesa,Brasil
+2814,Internacional,Brasil
+2900,Peñarol,Uruguay
+2901,Nacional,Uruguay
+2902,Wanderers,Uruguay
+2903,River Plate (URU),Uruguay
+2904,Bella Vista,Uruguay
+2905,Danubio,Uruguay
+2906,Defensor,Uruguay
+2907,Huracán B.,Uruguay
+2908,Liverpool,Uruguay
+2909,Rampla Jrs.,Uruguay
+2910,Rentistas,Uruguay
+2911,Villa Española,Uruguay
+2912,Cerro,Uruguay
+2913,Racing,Uruguay
+2951,Caracas,Venezuela
+2952,Atlético Zulia,Venezuela
+2953,Minervén,Venezuela
+3000,U. de Chile,Chile
+3001,U. Catolica,Chile
+3002,Colo Colo,Chile
+3003,Cobreloa,Chile
+3004,Audax Italiano,Chile
+3005,Coquimbo Unido,Chile
+3006,Provincial Osorno,Chile
+3007,Deportes La Serena,Chile
+3008,Deportes Temuco,Chile
+3009,Huachipato,Chile
+3010,Palestino,Chile
+3011,Deportes Concepción,Chile
+3012,Deportes Puerto Montt,Chile
+3013,Santiago Wanderers,Chile
+3014,Unión Española,Chile
+3015,Antofagasta,Chile
+3100,A. de Cali,Colombia
+3101,N. de Medellín,Colombia
+3102,Millonarios,Colombia
+3103,Once Caldas,Colombia
+3104,Indep. Medellín,Colombia
+3105,Indep. Santa Fe,Colombia
+3106,Deportivo Cali,Colombia
+3107,Atlético Junior,Colombia
+3108,Deportes Tolima,Colombia
+3109,Envigado,Colombia
+3110,Atlético Bucaramanga,Colombia
+3111,Unión Magdalena,Colombia
+3112,Dep. Tuluá (Cortuluá),Colombia
+3113,Deportivo Pereira,Colombia
+3114,Dep. Quindío,Colombia
+3115,Cúcuta Dep.,Colombia
+3200,O. de Asunción,Paraguay
+3201,Cerro Porteño,Paraguay
+3202,Guaraní,Paraguay
+3203,At. Colegiales,Paraguay
+3300,Altrincham,Inglaterra
+3301,Bath City,Inglaterra
+3302,Bromsgrove Rovers,Inglaterra
+3303,Dover Athletic,Inglaterra
+3304,Farnborough Town,Inglaterra
+3305,Gateshead,Inglaterra
+3306,Halifax Town,Inglaterra
+3307,Hayes,Inglaterra
+3308,Hednesford Town,Inglaterra
+3309,Kettering Town,Inglaterra
+3310,Kidderminster Harriers,Inglaterra
+3311,Macclesfield Town,Inglaterra
+3312,Morecambe,Inglaterra
+3313,Northwich Victoria,Inglaterra
+3314,Rushden & Diamonds,Inglaterra
+3315,Slough Town,Inglaterra
+3316,Southport,Inglaterra
+3317,Stalybridge Celtic,Inglaterra
+3318,Stevenage Borough,Inglaterra
+3319,Telford United,Inglaterra
+3320,Welling United,Inglaterra
+3321,Woking,Inglaterra
+3322,Accrington Stanley,Inglaterra
+3323,Alfreton Town,Inglaterra
+3324,Bamber Bridge,Inglaterra
+3325,Barrow,Inglaterra
+3326,Bishop Auckland,Inglaterra
+3327,Blyth Spartans,Inglaterra
+3328,Boston United,Inglaterra
+3329,Buxton,Inglaterra
+3330,Chorley,Inglaterra
+3331,Colwyn Bay,Inglaterra
+4000,Skonto,Letonia
+4001,Metalurgs Liepaja,Letonia
+4002,Ventspils,Letonia
+4003,Dinaburg,Letonia
+4025,Pyunik,Armenia
+4026,Tsement Ararat,Armenia
+4027,FC Shirak,Armenia
+4028,Ararat Erevan,Armenia
+4029,Mika Ashtarak,Armenia
+4050,Sileks,Macedonia
+4051,Sloga,Macedonia
+4052,Pobeda,Macedonia
+4053,Cementarnica,Macedonia
+4054,Rabotnicki,Macedonia
+4055,Pelister,Macedonia
+4075,Mozyr,Bielorrusia
+4076,Dnepr,Bielorrusia
+4077,Gomel,Bielorrusia
+4078,Bate Borisov,Bielorrusia
+4100,Lantana,Estonia
+4101,Flora Tallinn,Estonia
+4102,Levadia,Estonia
+4103,Tulevik Viljanai,Estonia
+4125,Neftchi Baku,Azerbaiyán
+4126,Kapaz Ganja,Azerbaiyán
+4127,Karabakh,Azerbaiyán
+4128,Shamkir,Azerbaiyán
+4200,Principat,Andorra
+4201,Constantine,Argelia
+4301,Carlton,Australia
+4302,Northern Spirit,Australia
+4303,Perth Glory,Australia
+4304,Adelaida City,Australia
+4305,Adelaida Sharks,Australia
+4306,Brisbane Strikers,Australia
+4307,Camberra Cosmos,Australia
+4308,Gippsland,Australia
+4309,Marconi Stallions,Australia
+4310,Melbourne Knights,Australia
+4311,Newcastle United,Australia
+4312,South Melbourne,Australia
+4313,Sydney Olympic,Australia
+4314,Sydney United,Australia
+4315,Wollongong,Australia
+4401,Hyundai Horang,Corea del Sur
+4501,Chicago Fire,USA
+4502,Colorado R.,USA
+4503,Columbus C.,USA
+4504,D.C. United,USA
+4505,Dallas Burns,USA
+4506,Kansas C. W.,USA
+4507,L.A. Galaxy,USA
+4508,Miami F.,USA
+4509,New England,USA
+4510,Metrostars,USA
+4511,San José E.,USA
+4512,Tampa Bay,USA
+4601,Persib,Indonesia
+4701,Esteglhal,Irán
+4802,Yokohama F. Marinos,Japón
+4803,Verdy Kawasaki,Japón
+4804,Nagoya Grampus,Japón
+4805,Júbilo Iwata,Japón
+4806,Consadale Sapporo,Japón
+4807,Kashima Antlers,Japón
+4808,Urawa Red,Japón
+4809,Jef Utd. Ichihara,Japón
+4810,Kashiwa Reysol,Japón
+4811,Bellmare Hiratsuka,Japón
+4812,Shimizu S Pulse,Japón
+4813,Kyoto Purple,Japón
+4814,Gamba Osaka,Japón
+4815,Vissel Kobe,Japón
+4816,Cerezo Osaka,Japón
+4817,Sanfrecce Hiroshima,Japón
+4818,Avispa Fukuoka,Japón
+4901,Raja Casablanca,Marruecos
+5001,Necaxa,México
+5002,Celaya,México
+5003,Guadalajara,México
+5004,Veracruz,México
+5005,América,México
+5006,U.A.G.,México
+5007,Puebla,México
+5008,Atlas,México
+5101,Shooting Stars,Nigeria
+5201,Orlando Pirates,Sudáfrica
+5202,Kaizer Chiefs,Sudáfrica
+5203,Amazulu,Sudáfrica
+5204,Manning Rangers,Sudáfrica
+5205,Sundowns,Sudáfrica
+5206,Mother City,Sudáfrica
+5207,Bush Bucks,Sudáfrica
+5208,Jomo Cosmos,Sudáfrica
+5209,Wits University,Sudáfrica
+5210,Free State Stars,Sudáfrica
+5211,Hellenic,Sudáfrica
+5212,Swallows,Sudáfrica
+5213,Bloemfontein,Sudáfrica
+5214,Vaal,Sudáfrica
+5215,SuperSport,Sudáfrica
+5216,Santos,Sudáfrica
+5217,Ajax Cape Town,Sudáfrica
+5218,Dynamos,Sudáfrica
+5301,Etoile du Sahel,Túnez
+5302,Esperance S.,Túnez
+5401,Jedintsvo,Bosnia
+5402,NK Brotnjo,Bosnia
+5403,Zeljeznicar,Bosnia
+5404,NK Buducnost,Bosnia
+5500,Constellació,España
+5501,F91 Dudelange,Luxemburgo
+5502,Verín,España
+5503,Viveiro,España
+5504,Gondomar,España
+5505,Cerceda,España
+5506,Compostela B,España
+5507,Pontenova,España
+5508,Ponte Ourense,España
+5509,Xove Lago,España
+5510,Malpica,España
+5511,Rápido de Bouzas,España
+5512,Betanzos,España
+5513,Pumarín,España
+5514,Tuilla,España
+5515,Astur,España
+5516,Titánico,España
+5517,Covadonga,España
+5518,Turón,España
+5519,Colloto,España
+5520,Piloñesa,España
+5521,Llanes,España
+5522,Mosconia,España
+5523,Valdesoto,España
+5524,Trasona,España
+5525,San Martín,España
+5526,Ribadesella,España
+5527,Navia,España
+5528,Textil Escudo,España
+5529,Bezana,España
+5530,Velarde,España
+5531,Deva,España
+5532,Castro,España
+5533,Villaescusa,España
+5534,Naval,España
+5535,Rayo Cantabria,España
+5536,Guarnizo,España
+5537,Laredo,España
+5538,Ayrón,España
+5539,Santoña,España
+5540,Revilla,España
+5541,Escobedo,España
+5542,Albericia,España
+5543,Cayón,España
+5544,Barreda,España
+5545,Ribamontán,España
+5546,Amorebieta,España
+5547,Lagun Onak,España
+5548,Aurrerá B,España
+5549,Alavés C,España
+5550,Real Unión B,España
+5551,Bergara,España
+5552,Arenas,España
+5553,Aurrerá Ondarroa,España
+5554,Hernani,España
+5555,Universidad PV,España
+5556,Sodupe,España
+5557,C. Durango,España
+5558,Basconia,España
+5559,Santboiá,España
+5560,Reus Deportivo,España
+5561,Tortosa,España
+5562,Júpiter,España
+5563,Guixols,España
+5564,Palafrugell,España
+5565,Vilassar,España
+5566,Girona,España
+5567,Banyoles,España
+5568,Vilobí,España
+5569,Badaloní,España
+5570,Cornellá,España
+5571,Balaguer,España
+5572,Tárrega,España
+5573,Europa,España
+5574,Barcelona C,España
+5575,Buñol,España
+5576,Pego,España
+5577,Vinarós,España
+5578,Foios,España
+5579,Castellón B,España
+5580,Pinoso,España
+5581,Denia,España
+5582,Torrellano,España
+5583,Elche B,España
+5584,Santa Pola,España
+5585,Burjassot,España
+5586,Gimnástico,España
+5587,Levante B,España
+5588,Onda,España
+5589,Eldense,España
+5590,Alicante,España
+5591,Vall de Uxó,España
+5592,Pegaso,España
+5593,Coslada,España
+5594,Las Rozas,España
+5595,At. Aviación,España
+5596,Navalcarnero,España
+5597,At. Pinto,España
+5598,Puerta Bonita,España
+5599,Parla,España
+5600,Cercedilla,España
+5601,Getafe B,España
+5602,Rayo Vallecano B,España
+5603,San Fernando (Hen),España
+5604,Santa Ana,España
+5605,Norma S.Leonardo,España
+5606,Medinense,España
+5607,Laguna,España
+5608,Becerril,España
+5609,Venta de Baños,España
+5610,Hullera V. Leonesa,España
+5611,Salamanca B,España
+5612,Astorga,España
+5613,Racing Lermeño,España
+5614,Béjar Industrial,España
+5615,Las Navas,España
+5616,C. Leonesa B,España
+5617,Benavente,España
+5618,La Bañeza,España
+5619,At. Bembibre,España
+5620,Santa Marta,España
+5621,Torredonjimeno,España
+5622,Ubeda,España
+5623,Alhaurino,España
+5624,Loja,España
+5625,Roquetas,España
+5626,Los Boliches,España
+5627,Arenas Armilla,España
+5628,Granada 74,España
+5629,Vandalia Inds.,España
+5630,Iliturgi,España
+5631,Fuengirola,España
+5632,Málaga B,España
+5633,San Pedro (Alc.),España
+5634,Antequera,España
+5635,Torremolinos,España
+5636,Imperio,España
+5637,Maracena,España
+5638,Pozoblanco,España
+5639,Los Barrios,España
+5640,Los Palacios,España
+5641,Córdoba B,España
+5642,Cartaya,España
+5643,Portuense,España
+5644,Puerto Real,España
+5645,Chiclana,España
+5646,Recreativo B,España
+5647,Serrallo,España
+5648,San José,España
+5649,Lucentino Ind.,España
+5650,Ayamonte,España
+5651,Tomares,España
+5652,Jerez Ind.,España
+5653,La Palma,España
+5654,At. Sanluqueño,España
+5655,Villanueva (Cór.),España
+5656,Montuiri,España
+5657,Manacor,España
+5658,At. Baleares,España
+5659,Sp. Mahonés,España
+5660,At. Ciudadela,España
+5661,Constancia,España
+5662,Eivissa,España
+5663,Santa Ponsa,España
+5664,Poblense,España
+5665,Playas Calviá,España
+5666,Santa Eulalia,España
+5667,Binisalem,España
+5668,Montaura,España
+5669,España,España
+5670,Alayor,España
+5671,Ferriolense,España
+5672,Villafranca (Mal.),España
+5673,Cardessar,España
+5674,Pollensa,España
+5675,Tenisca,España
+5676,San Isidro,España
+5677,Orotava,España
+5678,Las Palmas B,España
+5679,Doramas,España
+5680,O. Marítima,España
+5681,La Angostura,España
+5682,Victoria,España
+5683,Corralejo,España
+5684,Las Zocas,España
+5685,Tenerife B,España
+5686,Unión Carrizal,España
+5687,Castillo,España
+5688,Telde,España
+5689,La Oliva,España
+5690,Ibarra,España
+5691,Laguna (Ten.),España
+5692,Univ. San Antón,España
+5693,Molinense,España
+5694,Jumilla,España
+5695,Mazarrón,España
+5696,Alquerías,España
+5697,Ciudad de Murcia,España
+5698,Murcia B,España
+5699,Sangonera,España
+5700,Realesa Las Palas,España
+5701,Horadada,España
+5702,Orihuela,España
+5703,Pinatar,España
+5704,Lumbreras,España
+5705,O. Totana,España
+5706,Bala Azul,España
+5707,Cieza,España
+5708,Caravaca,España
+5709,Alhameño,España
+5710,Monesterio,España
+5711,Coria-Galco,España
+5712,Badajoz B,España
+5713,Montijo,España
+5714,La Estrella,España
+5715,Grabasa Burguillos,España
+5716,Villafranca,España
+5717,Villanovense,España
+5718,Castuera,España
+5719,Extremadura B,España
+5720,Sanvicenteño,España
+5721,Díter Zafra,España
+5722,Valdelacalzada,España
+5723,Cerro Reyes,España
+5724,Moraleja,España
+5725,Santa Amalia,España
+5726,River Ebro,España
+5727,Haro,España
+5728,Urroztarra,España
+5729,Aoiz,España
+5730,Arnedo,España
+5731,Agoncillo,España
+5732,Valle de Egües,España
+5733,Azkoyen,España
+5734,Alberite,España
+5735,Burladés,España
+5736,Aluvión Cascante,España
+5737,Beti Onak,España
+5738,Oberena,España
+5739,Artajonés,España
+5740,Mirandés,España
+5741,Alfaro,España
+5742,Idoya,España
+5743,Tamarite,España
+5744,Lalueza,España
+5745,Alcampel,España
+5746,Barbastro,España
+5747,Fraga,España
+5748,Utebo,España
+5749,Ebro,España
+5750,Ejea,España
+5751,Jacetano,España
+5752,Sariñena,España
+5753,Teruel,España
+5754,Fuentes,España
+5755,San Gregorio,España
+5756,Zuera,España
+5757,La Almunia,España
+5758,Villanueva,España
+5759,Puertollano,España
+5760,Bolañego,España
+5761,Cabanillas,España
+5762,Talavera B,España
+5763,Torpedo 66,España
+5764,Cuenca,España
+5765,Valdepeñas,España
+5766,Piedrabuena,España
+5767,Quintanar,España
+5768,Gim. Alcázar,España
+5769,Campillo,España
+5770,Albacete B,España
+5771,Hellín,España
+5772,Almansa,España
+5773,Villarrobledo,España
+5774,Torrijos,España
+5775,Manzanares,España
+5776,Guadalajara,España
+5777,Tomelloso,España
+5778,Socuéllamos,España
+5779,Peralta,España
+5780,Villarreal B,España
+9001,River,Argentina
+9002,San Lorenzo,Argentina
+9003,Vélez,Argentina
+9004,Argentinos Jrs.,Argentina
+9005,Newell's,Argentina
+9006,Belgrano,Argentina
+9007,Lanús,Argentina
+9008,Banfield,Argentina
+9009,Rosario Central,Argentina
+9010,Gimnasia (LP),Argentina
+9011,Independiente,Argentina
+9012,Racing,Argentina
+9013,Boca,Argentina
+9014,Huracán,Argentina
+9015,Platense,Argentina
+9016,Gimnasia (J),Argentina
+9017,Ferro,Argentina
+9018,Dep. Español,Argentina
+9019,Colón,Argentina
+9020,Estudiantes (LP),Argentina
+9021,Dep. Morón,Argentina
+9022,Arsenal,Argentina
+9023,Tigre,Argentina
+9024,San Martín (Tuc),Argentina
+9025,Ctral. Córdoba,Argentina
+9026,Los Andes,Argentina
+9027,Talleres (Cba),Argentina
+9028,All Boys,Argentina
+9029,Gimnasia y Tiro,Argentina
+9030,Unión (Sta Fe),Argentina
+9031,Godoy Cruz,Argentina
+9032,San Martín (SJ),Argentina
+9033,Atl. Rafaela,Argentina
+9034,Huracán (Ctes),Argentina
+9035,Nueva Chicago,Argentina
+9036,Instituto (Cba),Argentina
+9037,Quilmes,Argentina
+9038,Douglas Haig,Argentina
+9039,Atl. Tucumán,Argentina
+9040,Chacarita Jrs.,Argentina
+9041,Atlanta,Argentina
+9042,Alte. Brown,Argentina
+9043,San Miguel,Argentina
+9044,Defensa y Just.,Argentina
+9045,Aldosivi (M.P.),Argentina
+9046,Almagro,Argentina
+9047,Alte. Brown (Ar.),Argentina
+9048,Cipolletti (RN),Argentina
+9050,Dep. Italiano,Argentina
+9051,Estudiantes (B.A.),Argentina
+9052,Olimpo,Argentina
+9053,San Martín (Mza),Argentina
+9054,Juv. Antoniana,Argentina
+9055,Gim. Entre Ríos,Argentina
+9056,El Porvenir,Argentina
+9057,Argentino Ros.,Argentina
+9058,Temperley,Argentina
+9059,Independente (Mza),Argentina
+9060,Villa Mitre,Argentina
+9061,Racing (Cor),Argentina
+9900,Estrellas España,
+9901,Estrellas Italia,
+9902,Estrellas Inglaterra,
+9903,Estrellas Argentina,
+9950,Jugadores Libres,
+9955,Juveniles España,
+9956,Juveniles Inglaterra,
+9957,Juveniles Italia,
+9958,Juveniles Argentina,

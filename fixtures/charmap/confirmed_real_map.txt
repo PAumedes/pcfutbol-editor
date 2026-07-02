@@ -1,0 +1,57 @@
+# Confirmed-real byte->glyph substitution pairs for the PC Fútbol 6.x / PC
+# Apertura DBC character codec (PLAN.md Appendix A, §9 risk #1).
+#
+# UNLIKE fixtures/charmap/synthetic_map.txt, every mapping below is derived
+# from real, worked hex examples in the "Editor PCF 6.0" manual's
+# (jandro996/EditorPCFutbol6, by carky12) "Edición hexadecimal de archivos
+# DBC" appendix -- not invented. Each byte value was cross-checked against
+# every other occurrence across six independent real strings ("Real Madrid
+# C.F.", "Santiago Bernabéu", "Lorenzo Sanz Mancebo", "TEKA", "ADIDAS",
+# "Hiddink", "Guus Hiddink") with zero contradictions, so this is a small
+# but genuinely confirmed subset of the real alphabet -- not the full map.
+# It does not cover digits, most accented letters, or most punctuation.
+# Merge with a real community map.txt (still needed from the user -- see
+# fixtures/README.md) rather than relying on this alone.
+#
+# Format matches CharMap::parse: `HH\tChar` (byte hex, tab, glyph; \s means
+# space). 3F -> ^ is the one byte the manual calls out by name as a
+# documented real example of an "unknown glyph" fixup a user had to add.
+
+00	a
+02	c
+03	b
+04	e
+05	d
+06	g
+08	i
+0A	k
+0D	l
+0E	o
+0F	n
+12	s
+13	r
+14	u
+15	t
+1B	z
+20	A
+22	C
+23	B
+24	E
+25	D
+26	G
+27	F
+28	I
+29	H
+2A	K
+2C	M
+2D	L
+2F	N
+32	S
+33	R
+35	T
+3F	^
+41	\s
+4D	,
+4F	.
+6C	=
+88	é

@@ -1,6 +1,24 @@
 # Apertura team-pointer table
 
-**Empty right now.** See `fixtures/README.md` item 3 for context.
+## Real reference data (landed)
+
+- `team_pointers.csv` — the full carky12 team-pointer catalog (pointer →
+  name/country) for every PC Fútbol 6.x edition, transcribed from
+  `jandro996/EditorPCFutbol6`'s `Manuales/Punteros Equipos.pdf`. Confirms
+  Boca = `9013` (matches `pointers::team_filename`'s worked example) and
+  the whole `9000`-`9061` Argentina block.
+- `country_pointers.csv` — the country-code table (byte → country name)
+  from the same repo's `Manuales/Punteros Paises.pdf`. Confirms Argentina
+  = `0x03` (the mocks previously used a placeholder `1`, i.e. Albania).
+
+Both are community reference metadata (numeric pointer/code tables), not
+extracted Dinamic binary asset data — see "Source" below.
+
+**Still missing:** the `eq003003_pointers.csv`-style *load-order* mapping
+described below — `team_pointers.csv` gives the static pointer→name
+catalog, not which position each team occupies when a specific
+`EQ003003.PKF` is loaded (that's what `resolve_player_block` actually
+needs to recover a DBC's 50-player block).
 
 ## What goes here
 

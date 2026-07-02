@@ -16,16 +16,18 @@ use pcf_model::{
 };
 
 pub fn team_index() -> TeamIndex {
+    // Country code 3 = Argentina, pointer 9013 = Boca / 9001 = River — both
+    // confirmed against real reference data, see fixtures/pointers/*.csv.
     vec![
         TeamIndexEntry {
             pointer: 9013,
             short_name: "BOCA".into(),
-            country: 1,
+            country: 3,
         },
         TeamIndexEntry {
-            pointer: 9014,
+            pointer: 9001,
             short_name: "RIVER".into(),
-            country: 1,
+            country: 3,
         },
     ]
 }
@@ -41,7 +43,7 @@ pub fn dbc() -> Dbc {
             short_name: "BOCA".into(),
             stadium_name: "LA BOMBONERA".into(),
             long_name: "CLUB ATLETICO BOCA JUNIORS".into(),
-            country: 1,
+            country: 3,
             capacity: 49_000,
             standing_capacity: 0,
             founded: 1905,
@@ -108,7 +110,7 @@ pub fn dbc() -> Dbc {
                 Role::Empty,
                 Role::Empty,
             ],
-            nationality: 1,
+            nationality: 3,
             skin: Skin::White,
             hair: Hair::Dark,
             demarcation: Demarcation::Fwd,
@@ -119,7 +121,7 @@ pub fn dbc() -> Dbc {
             },
             height_cm: 178,
             weight_kg: 78,
-            birth_country: 1,
+            birth_country: 3,
             birthplace: "AVELLANEDA".into(),
             debut_club: "x".into(),
             international: "x".into(),

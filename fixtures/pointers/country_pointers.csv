@@ -1,0 +1,213 @@
+# Real country-pointer table, transcribed from carky12's "Punteros Paises.pdf"
+# (jandro996/EditorPCFutbol6 repo, Manuales/Punteros Paises.pdf).
+# Community reference data (byte code -> country name), not proprietary
+# Dinamic game content -- see PLAN.md Appendix C / §9 risk #1 and
+# fixtures/README.md. pointer_hex is the single byte stored in
+# Team.country / Player.nationality / Player.birth_country.
+pointer_hex,country,available_in_pcf5
+01,Albania,true
+02,Alemania,true
+03,Argentina,true
+04,Australia,true
+05,Austria,true
+06,Azerbaiyán,true
+07,Bielorusia,true
+08,Bolivia,true
+09,Bosnia,true
+0A,Brasil,true
+0B,Bulgaria,true
+0C,Bélgica,true
+0D,Camerún,true
+0E,Chile,true
+0F,Chipre,true
+10,Colombia,true
+11,Croacia,true
+12,Dinamarca,true
+13,Escocia,true
+14,Eslovaquia,true
+15,Eslovenia,true
+16,España,true
+17,Finlandia,true
+18,Francia,true
+19,Ghana,true
+1A,Grecia,true
+1B,Holanda,true
+1C,Honduras,true
+1D,Hungría,true
+1E,Inglaterra,true
+1F,Irlanda,true
+20,Irlanda del Norte,true
+21,Islandia,true
+22,Islas Feroe,true
+23,Israel,true
+24,Italia,true
+25,Lituania,true
+26,Luxemburgo,true
+27,Macedonia,true
+28,Malta,true
+29,Marruecos,true
+2A,Moldavia,true
+2B,Nigeria,true
+2C,Noruega,true
+2D,País de Gales,true
+2E,Polonia,true
+2F,Portugal,true
+30,Rep. Checa,true
+31,Rumania,true
+32,Rusia,true
+33,Serbia,true
+34,Sudáfrica,true
+35,Suecia,true
+36,Suiza,true
+37,Turquía,true
+38,Ucrania,true
+39,Uruguay,true
+3A,Yugoslavia,true
+3B,Perú,true
+3C,Canadá,true
+3D,Usa,true
+3E,Georgia,true
+3F,Costa Rica,true
+40,Paraguay,true
+41,Japón,true
+42,Argelia,true
+43,Trinidad Y Tobago,true
+44,Senegal,true
+45,Surinam,true
+46,Zambia,true
+47,Cabo Verde,true
+48,Venezuela,true
+49,Rodesia,true
+4A,Singapur,true
+4B,Andorra,true
+4C,Mozambique,true
+4D,Liechtenstein,true
+4E,Liberia,true
+4F,Panamá,true
+50,Zaire (actual República Democrática del Congo),true
+51,Tadzhikistán,true
+52,Uzbekistán,true
+53,México,true
+54,Guinea,true
+55,Angola,true
+56,Zimbabwe,true
+57,Sierra Leona,true
+58,Guadalupe,true
+59,Ecuador,true
+5A,Estonia,true
+5B,Guinea Bissau,true
+5C,Libia,true
+5D,Egipto,true
+5E,Jamaica,true
+5F,Nueva Caledonia,true
+60,Bermudas,true
+61,Nueva Zelanda,true
+62,Guayana France,true
+63,San Vicente,true
+64,Chad,true
+65,Togo,true
+66,Guinea Conakry,true
+67,Tanzania,true
+68,Burkina Faso,true
+69,Gambia,true
+6A,Ruanda,true
+6B,Kenia,true
+6C,Mauritania,true
+6D,Mali,true
+6E,Uganda,true
+6F,Congo (República del Congo),true
+70,Letonia,true
+71,Costa de Marfil o Costa de Ivori,true
+72,Armenia,true
+73,Nicaragua,true
+74,Cataluña,true
+75,Níger,true
+76,Barbados,false
+77,Irán,false
+78,Qatar,false
+79,Túnez,false
+7A,Gabón,false
+7B,Tahití,false
+7C,Islas Mauricios,false
+7D,Madagascar,false
+7E,Martinica,false
+7F,Vietnam,false
+80,Haití,false
+81,Antigua Y Barbuda,false
+82,Bahrein,false
+83,Bangladesh,false
+84,Belize,false
+85,Benin,false
+86,Bhután,false
+87,Botswana,false
+88,Brunei,false
+89,Burundi,false
+8A,Camboya,false
+8B,República Centroafricana,false
+8C,China,false
+8D,Comoros,false
+8E,Yemen,false
+8F,Cuba,false
+90,Djibouti,false
+91,Dominica,false
+92,República Dominicana,false
+93,El Salvador,false
+94,Guinea Ecuatoriana,false
+95,Eritrea,false
+96,Etiopía,false
+97,E.F. de Micronesia,false
+98,Fiji,false
+99,Granada,false
+9A,Guatemala,false
+9B,Afganistán,false
+9C,India,false
+9D,Indonesia,false
+9E,Irak,false
+9F,Jordania,false
+A0,Kazajistán,false
+A1,Kiribati,false
+A2,Kuwait,false
+A3,Kirguistán,false
+A4,Laos,false
+A5,Ciudad Vaticano,false
+A6,Líbano,false
+A7,Lesotho,false
+A8,Malawi,false
+A9,Malasia,false
+AA,Maldivas,false
+AB,Islas Marshall,false
+AC,Mónaco,false
+AD,Mongolia,false
+AE,Myanmar,false
+AF,Namibia,false
+B0,Nauru,false
+B1,Nepal,false
+B2,Corea del Norte,false
+B3,Omán,false
+B4,Pakistán,false
+B5,Palau,false
+B6,Papúa Nueva Guinea,false
+B7,Filipinas,false
+B8,San Kitts Y Nevis,false
+B9,Santa Lucía,false
+BA,Samoa,false
+BB,San Marino,false
+BC,Santo Tomé Y Príncipe,false
+BD,Arabia Saudí,false
+BE,Seychelles,false
+BF,Islas Salomón,false
+C0,Somalia,false
+C1,Corea del Sur,false
+C2,Sri Lanka,false
+C3,Sudán,false
+C4,Suazilandia,false
+C5,Siria,false
+C6,Taiwán,false
+C7,Thailandia,false
+C8,Las Bahamas,false
+C9,Tonga,false
+CA,Turkmenistán,false
+CB,Tuvalu,false
+CC,Emiratos Árabes,false
+CD,Reino Unido,false
+CE,Vanuatu,false
