@@ -22,3 +22,4 @@ fixtures/golden/*
 fixtures/manager/*.exe
 fixtures/manager/*.bak
 !fixtures/manager/*synthetic*
+.commit-msg.txt
