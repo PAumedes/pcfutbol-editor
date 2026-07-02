@@ -4,9 +4,11 @@
   "version": "0.0.1",
   "identifier": "com.pcfutbol.editor",
   "build": {
-    "frontendDist": "dist"
+    "frontendDist": "../ui/dist",
+    "beforeBuildCommand": "npm --prefix ../ui run build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "PC Apertura 98/99 Editor",
