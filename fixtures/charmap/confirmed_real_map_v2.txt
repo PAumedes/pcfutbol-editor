@@ -274,3 +274,69 @@ DB	º
 #   "Br[9D]ggli[07]eld" (global=197 stadium, Aarau's "Brügglifeld") /
 #   "Atat[9D]rk" (globals 179/181 stadium, "Atatürk").
 9D	ü
+
+# --- New (second pass): from the 55 real Argentina domestic team records ---
+# `crates/pcf-codec/src/container.rs`'s DOMESTIC_HEADER_TAIL scan of the
+# real EQ003003.PKF (PKF_FORMAT.md §8/§9) found 55 real domestic team
+# records but only 39 parsed end-to-end (`examples/dump_container.rs`); the
+# other 16 all failed with `charmap_unknown_byte`. Diagnosis (see
+# PKF_FORMAT.md's Character-map-expansion note near §7/§8 for the full
+# writeup): every failure's `short_name`/`stadium_name`/`long_name` needed
+# one of the 5 pairs below. Same methodology as the rest of this file: each
+# byte's glyph was inferred from the one real name/fact it had to complete,
+# then cross-checked against every other occurrence in this new corpus (the
+# 55 domestic records) for self-consistency.
+# 49='(' / 48=')': confirmed by 14+ occurrences, always in matched pairs
+#   immediately bracketing a real disambiguating abbreviation, and matching
+#   PKF_FORMAT.md §9's own already-published decoded name list exactly --
+#   e.g. "Gim. Esgrima [49]LP[48]" = "Gim. Esgrima (LP)" (Gimnasia y
+#   Esgrima La Plata), "Estudiantes [49]LP[48]", "San Martín [49]Tuc[48]",
+#   "Talleres [49]Cba[48]", "Huracán [49]Ctes[48]", "Aldosivi [49]M.P[48]",
+#   "Alte. Brown [49]Ar.[48]", "Cipoletti [49]RN[48]", "Estudiantes
+#   [49]B.A.[48]", "San Martín [49]Mza[48]"/[49]SJ[48]/[49]J[48], and
+#   "Club Atlético Belgrano [49]Córdoba[48]"/"Talleres [49]Córdoba[48]" in
+#   the corresponding `long_name` fields -- zero contradictions across all
+#   occurrences.
+49	(
+48	)
+# 52='3' / 53='2': confirmed by a complete, exact-length decode of Club
+#   Gimnasia y Esgrima de Jujuy's real stadium name: banner@0x14f5d8's
+#   12-byte stadium_name `26 08 0c 0f 00 12 08 00 41 49 2b 48`-preceded
+#   field decodes fully (all 12 bytes, no gaps) to "23 de agosto" --
+#   "Estadio 23 de Agosto", Gimnasia de Jujuy's real home ground, named for
+#   the 23 August 1812 "Éxodo Jujeño". `0x53='2'` is independently
+#   corroborated by 2 further occurrences: banner@0x1955c7 (San Martín SJ)
+#   stadium reads "2[56] de Septiembre" (`0x56`, presumably the digit '7',
+#   is NOT resolved by this pass -- see the open-byte note below) and
+#   banner@0x0d9a2f (Newell's) stadium reads "2 de Abril" -- both plausible
+#   Argentine calendar-dated stadium names, self-consistent with '2', not
+#   independently fact-checked the way the Jujuy citation is.
+52	3
+53	2
+# 54='5': confirmed by a complete, exact-length (11/11 bytes) decode of
+#   Club Atlético Unión (Santa Fe)'s real stadium name: banner@0x18c2a0's
+#   stadium_name decodes fully to "15 de Abril" -- "Estadio 15 de Abril" is
+#   Unión de Santa Fe's real, well-documented home ground. 1 citation, but
+#   a complete/exact-length match leaving no other bytes unaccounted for.
+54	5
+# 43=" (double quotation mark): confirmed by a complete, exact-length
+#   (43/43 bytes) decode of Alte. Brown (Arrecifes)'s real stadium name:
+#   banner@0x1a5ef5's stadium_name decodes fully to `Municipal [43]General
+#   San Martín[43] de Arrecifes` = `Municipal "General San Martín" de
+#   Arrecifes` -- a standard Argentine municipal-stadium naming convention
+#   (quoting the honoree's name inside the facility's official name). 1
+#   citation, but a complete/exact-length match with the quote mark used
+#   consistently as both the opening and closing delimiter.
+43	"
+
+# --- Still open (deliberately not guessed, same as 0xD5 above): ---------
+# 0x56 appears once, in banner@0x1955c7's stadium_name "2[56] de
+# Septiembre" (San Martín, San Juan) -- plausibly the digit '7' (making
+# "27 de Septiembre"), and consistent with an otherwise-elegant apparent
+# byte-table pattern (0x50/0x51='1'/'0', 0x52/0x53='3'/'2', 0x54/0x55=
+# '5'/'4', 0x58/0x59='9'/'8' all being adjacent-byte-pair-swapped digits,
+# which would predict 0x56/0x57='7'/'6' and 0x57='6' IS independently
+# confirmed above) -- but this pass could not independently fact-check
+# "27 de Septiembre" against a known real-world date/fact for this club,
+# and a byte-table-shape argument alone isn't the same standard of evidence
+# used elsewhere in this file. Left unresolved rather than guessed.

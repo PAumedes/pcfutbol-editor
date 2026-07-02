@@ -50,6 +50,18 @@ export async function openDbc(path: string): Promise<Dbc> {
   return structuredClone(mockDbc);
 }
 
+// contract-change: new command, not part of the original PLAN.md §4.3 list
+// (see the note appended there). Loads one team's full `Dbc` out of an
+// already-scanned `.PKF` container, keyed by the pointer `loadPkf`'s
+// `TeamIndex` reported for it -- distinct from `openDbc`, which opens a
+// single standalone `.DBC` override file by path.
+export async function loadPkfTeam(path: string, pointer: number): Promise<Dbc> {
+  if (hasTauriBackend()) {
+    return invokeTauri<Dbc>("load_pkf_team", { path, pointer });
+  }
+  return structuredClone(mockDbc);
+}
+
 export async function saveDbc(
   dbc: Dbc,
   outDir: string,

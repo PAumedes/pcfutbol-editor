@@ -11,8 +11,8 @@ pub mod commands;
 mod mock;
 
 use commands::{
-    charmap_status, detect_game_dir, export_dbdat, import_crest, import_photo, load_pkf, new_dbc,
-    open_dbc, patch_manager, save_dbc,
+    charmap_status, detect_game_dir, export_dbdat, import_crest, import_photo, load_pkf,
+    load_pkf_team, new_dbc, open_dbc, patch_manager, save_dbc,
 };
 
 /// Build and run the Tauri app. Called from `main.rs`.
@@ -24,6 +24,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             load_pkf,
+            load_pkf_team,
             open_dbc,
             save_dbc,
             new_dbc,

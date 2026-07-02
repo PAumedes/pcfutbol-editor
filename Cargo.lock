@@ -2156,6 +2156,7 @@ name = "pcf-editor"
 version = "0.0.2"
 dependencies = [
  "anyhow",
+ "pcf-codec",
  "pcf-model",
  "serde",
  "serde_json",

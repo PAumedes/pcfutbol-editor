@@ -206,6 +206,20 @@ charmap_status()                  -> CharmapInfo       // loaded? missing glyphs
 
 `PointerMode = { Auto, PreserveFromFile }`. Errors cross the boundary as `{ code, message, context }` (typed via `thiserror` → serialized).
 
+> **contract-change (post-M0):** added `load_pkf_team(path: String, pointer: u16) -> Dbc`.
+> Once `load_pkf` is wired to the real `pcf_codec::container` parser (see
+> `fixtures/PKF_FORMAT.md`), the natural next step — the user picks one team
+> out of the loaded `TeamIndex` and edits it — needs a way to fetch that
+> team's full `Dbc`, bridged from its `ContainerTeamRecord`
+> (`pcf_codec::container_bridge::container_team_to_dbc`) rather than read
+> from a standalone override file. `open_dbc` was deliberately left as-is
+> (it documents opening an existing standalone `.DBC` override file by
+> path, a different request shape) rather than repurposed, to avoid
+> muddying its one existing meaning. Implemented in
+> `src-tauri/src/commands.rs`, mirrored in `ui/src/lib/ipc.ts`'s
+> `loadPkfTeam`. No `pcf-model`/`ui/src/lib/model.ts` type changes were
+> needed — it reuses the existing `Dbc` shape verbatim.
+
 **Definition of M0 done:** `pcf-model` compiles, publishes these types, ships `pointers` helpers with unit tests, and the TS mirror + mock fixtures exist in `ui/src/lib`. Tag `v0.0.1-contracts`.
 
 ---

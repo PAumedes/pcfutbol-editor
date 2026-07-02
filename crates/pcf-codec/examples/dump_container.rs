@@ -65,29 +65,41 @@ fn main() {
     println!("found {} domestic team record(s)\n", outcomes.len());
 
     println!(
-        "{:<24} {:>10} {:>8}  {:<28} coach",
-        "team", "capacity", "founded", "president"
+        "{:<24} {:>10} {:>8}  {:<28} {:<24} players  sample names",
+        "team", "capacity", "founded", "president", "coach"
     );
-    println!("{}", "-".repeat(100));
+    println!("{}", "-".repeat(140));
 
     let mut ok_count = 0usize;
     let mut fail_count = 0usize;
+    let mut full_roster_count = 0usize;
     for outcome in &outcomes {
         match &outcome.result {
             Ok(record) => {
                 ok_count += 1;
+                if !record.players.is_empty() {
+                    full_roster_count += 1;
+                }
                 let coach_name = record
                     .coach
                     .as_ref()
                     .map(|c| c.short_name.as_str())
                     .unwrap_or("(none found)");
+                let sample_names: Vec<&str> = record
+                    .players
+                    .iter()
+                    .take(2)
+                    .map(|p| p.short_name.as_str())
+                    .collect();
                 println!(
-                    "{:<24} {:>10} {:>8}  {:<28} {}",
+                    "{:<24} {:>10} {:>8}  {:<28} {:<24} {:>7}  {}",
                     record.short_name,
                     record.capacity,
                     record.founded,
                     record.president,
-                    coach_name
+                    coach_name,
+                    record.players.len(),
+                    sample_names.join(", ")
                 );
             }
             Err(e) => {
@@ -102,7 +114,8 @@ fn main() {
 
     println!(
         "\n{ok_count} parsed successfully, {fail_count} failed, out of {} total domestic \
-         record(s) found.",
+         record(s) found. {full_roster_count} of the {ok_count} successfully-parsed team(s) \
+         also have a non-empty player roster.",
         outcomes.len()
     );
 }

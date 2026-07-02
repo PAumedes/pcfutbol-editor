@@ -25,8 +25,8 @@ real club names, which are factual and already public in
 | Directory format | **Decoded and verified** — see §2. |
 | "Foreign reference clubs" stub table | **Decoded, ~473 records located and read** — see §3. |
 | Real domestic (Argentina) team records | **55 records located file-wide** (§9), decoded via a corrected 4-byte signature (`0D 02 00 00` at header+2 — the naive 6-byte match only worked for River by coincidence, see §8's UPDATE). River's team-info fields (short_name through president) **confirmed high-confidence** via 5 independently-checkable real-world facts. Coach chain start **confirmed** (real coach name "Ramón Díaz" decodes exactly). **Full player roster confirmed** for River: exactly 27 players, walked end-to-end, real historically-documented names (Burgos, Bonano, Sorín, Gallardo, Saviola, Aimar, etc.) — see §6.6-§6.7. Tactics-block byte offsets confirmed exactly; field identity (jornada/formation_blob) medium-high confidence — see §6.3. |
-| Character map | **77 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **40 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`), derived by decoding all 473 stub-table records (§3) and cross-referencing every gap against real football names — see §7. This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). |
-| Full container parser in `pcf-codec` | **Team-info + coach-chain parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_pkf_container`/`parse_pkf_container_verbose`) — a new, local type (`ContainerTeamRecord`/`ContainerCoachStub`), not a reuse of `pcf_model::Team`/`Coach`. Two real bugs were caught by actually running the real-fixture test/examples against the mounted file rather than trusting synthetic-only unit tests: (1) a directory-derived "stub table end" floor that silently excluded every domestic record (§8.1); (2) an over-strict 6-byte header match that only matched River by coincidence, since the leading 2 bytes vary per team — fixed to match only the constant 4-byte tail (`0D 02 00 00`), with the varying prefix kept as a new `header_prefix` field rather than discarded (§8.2 UPDATE 2). With both fixes, the parser finds **55 real domestic records** and successfully parses **39 of them** end-to-end with verified real-world data (e.g. Boca's decoded president is "Mauricio Macri", accurate for 1998); the other 16 fail with a typed, non-panicking `charmap_unknown_byte` error because their names contain a parenthesis, not yet in the 77-pair charmap — a well-scoped follow-up, not yet done. Full player-roster parsing is still **not implemented** in `container.rs` (kept as an opaque `trailing_raw` blob per record), though the per-player fixed-field layout is now confirmed byte-exact and high-confidence for a production implementation to build on (§6.6-§6.7: all 27 of River's real players decoded end-to-end, matching the real 1998-99 squad name-for-name). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo. |
+| Character map | **82 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **45 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`): 40 derived by decoding all 473 stub-table records (§3, see §7), plus **5 more** derived from the 55 real Argentina domestic team records (§8.3) — `(`, `)`, digits `2`/`3`/`5`, and `"` (double quote). This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). One byte, `0x56` (presumably digit `7`), remains open — see §8.3. |
+| Full container parser in `pcf-codec` | **Team-info + coach-chain + full player-roster parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_player_record`, `parse_player_roster`, `parse_pkf_container`/`parse_pkf_container_verbose`) — new, local types (`ContainerTeamRecord`/`ContainerCoachStub`/`ContainerPlayerRecord`), not a reuse of `pcf_model::Team`/`Coach`/`Player`. With the charmap fix (§8.3) and player-roster parsing (§8.4) both landed, `examples/dump_container.rs` finds **55 real domestic records**, parses **54 of them** end-to-end (the sole remaining failure is San Martín SJ, blocked purely by the one still-open `0x56` charmap byte, §8.3), and **all 54 successfully-parsed teams also get a fully-parsed, non-empty player roster** — including River's exactly-27-player roster matching the real 1998-99 squad name-for-name (§6.6-§6.7). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo (now also printing each team's player count and a couple of sample names). |
 
 ## 1. No encryption
 
@@ -845,6 +845,131 @@ module's design (`Option<ContainerCoachStub>`); the confirmed `02 02`
 coach-marker heuristic is real but not guaranteed present/locatable for
 every team's data (smaller/lower-tier clubs plausibly have thinner
 records).
+
+### 8.3 Charmap follow-up: the 16 `(`/`)` (and digit/quote) failures — RESOLVED, 54/55 now parse
+
+The well-scoped follow-up flagged in §8.2 UPDATE 2 is done. Diagnosis (via a
+temporary scratch investigator, since removed, that lossy-decoded every
+domestic record's `short_name`/`stadium_name`/`long_name` and flagged every
+unmapped byte, not just the first-blocking one per field like
+`parse_team_record`'s hard-erroring `?` naturally stops at): the 16 failures
+were NOT all parentheses-only. Five distinct new bytes were needed, each
+confirmed by a complete, exact-length real-name decode (methodology
+identical to §7 — infer from the one real name/fact that fits, then
+cross-check every other occurrence for self-consistency):
+
+- **`0x49='('`, `0x48=')'`** — confirmed by 14+ occurrences, always in
+  matched pairs immediately bracketing a real disambiguating abbreviation,
+  matching §9's own already-decoded short-name list exactly (e.g. "Gim.
+  Esgrima (LP)", "San Martín (Tuc)", "Talleres (Cba)", and the
+  `long_name`-field instances "Club Atlético Belgrano (Córdoba)"/"Talleres
+  (Córdoba)"). Zero contradictions.
+- **`0x52='3'`, `0x53='2'`** — confirmed by a complete, exact-length (12/12
+  bytes, zero gaps) decode of Club Gimnasia y Esgrima de Jujuy's real
+  stadium name (`banner@0x14f5d8`): `"23 de agosto"` — the real "Estadio 23
+  de Agosto", named for the 23 August 1812 Éxodo Jujeño. `0x53='2'` is
+  independently corroborated by 2 further occurrences elsewhere in the
+  corpus (San Martín SJ's and Newell's stadium fields, both reading
+  plausible "2? de <month>" patterns), though those two aren't independently
+  fact-checked the way the Jujuy citation is.
+- **`0x54='5'`** — confirmed by a complete, exact-length (11/11 bytes)
+  decode of Club Atlético Unión (Santa Fe)'s real stadium name
+  (`banner@0x18c2a0`): `"15 de Abril"` — the real, well-documented "Estadio
+  15 de Abril". 1 citation, but a complete/exact-length match.
+- **`0x43='"'`** (double quote) — confirmed by a complete, exact-length
+  (43/43 bytes) decode of Almirante Brown (Arrecifes)'s real stadium name
+  (`banner@0x1a5ef5`): `Municipal "General San Martín" de Arrecifes` — a
+  standard Argentine municipal-stadium naming convention, with the byte used
+  consistently as both the opening and closing delimiter. 1 citation, but a
+  complete/exact-length match.
+
+All 5 pairs were added to `fixtures/charmap/confirmed_real_map_v2.txt`
+(same file, same provenance/methodology — this is an extension of the
+existing corpus-cross-reference effort, not a new source). Re-running
+`examples/dump_container.rs` against the real file: **54 of the 55 real
+domestic records now parse successfully end-to-end** (up from 39).
+
+**One byte deliberately left open**: `0x56`, appearing once in San Martín
+(San Juan)'s stadium field (`"2[56] de Septiembre"`, presumably `'7'`,
+`banner@0x1955c7`). An apparent byte-table pattern (`0x50`/`0x51`,
+`0x52`/`0x53`, `0x54`/`0x55` all being adjacent-byte-pair-swapped digit
+pairs, which would predict `0x56`/`0x57` similarly, and `0x57='6'` is
+already independently confirmed) makes `0x56='7'` plausible, but this pass
+could not independently fact-check "27 de Septiembre" against a known real
+fact for this specific club the way every other pair above was verified —
+left unresolved rather than forced, same precedent as `0xD5` in §7.4. This
+is the one remaining failure in `dump_container.rs`'s 55-record run.
+
+### 8.4 Full player-roster parsing landed in `container.rs` — two more real bugs caught by real-file testing
+
+§6.6-§6.7's confirmed player-record layout is now implemented in
+production code: `ContainerPlayerRecord`, `parse_player_record`,
+`parse_player_roster`, wired into `ContainerTeamRecord::players` (replacing
+the old `trailing_raw`-only placeholder — `trailing_raw` now just holds
+whatever's left over after the best-effort roster walk, normally the
+1-byte end-of-roster terminator §6.7 already documented). Consistent with
+this module's whole history (§8.1/§8.2), the first version that passed all
+synthetic unit tests still failed against the real file, in two distinct
+ways:
+
+**Bug 1: the gap-search accepted the wrong (too-short) gap length.** The
+original gap-search (mirroring `investigate_player_layout.rs`) only checked
+that a candidate `short_name` length-prefix's own bytes decoded via the
+charmap. That was safe when the charmap was small, but now that
+`confirmed_real_map_v2.txt` covers 82 pairs — most of the printable byte
+range — a short run of essentially arbitrary bytes at the *wrong* candidate
+gap length would often happen to decode to *something* anyway, without
+erroring. Running against River's real roster found this immediately:
+gap_len=3 (the confirmed-correct gap for the very first player, Saccone)
+kept losing to gap_len=0/1/2, which decoded successfully but nonsensically.
+**Fix:** the gap-search now requires the *entire* rest of the player
+record — `short_name` onward, via a new `parse_player_body` helper — to
+both parse successfully and land every enum-shaped byte in its confirmed
+real-data range, not just that `short_name`'s own bytes happen to
+charmap-decode. A misaligned gap reliably breaks that stronger check even
+when it wouldn't have broken the old, narrower one.
+
+**Bug 2: `long_name` and the 9 free-text fields don't all decode strictly
+under the current charmap.** Even with bug 1 fixed, parsing stalled after
+7 of River's 27 players: player 8 (Martínez)'s `long_name`, "Jorge Daniel
+MART[byte]NEZ", contains a byte (`0xAC`, plausibly an accented uppercase
+Í) that isn't in the 82-pair charmap at all — confirmed by a single clean,
+byte-boundary-isolated citation, but not independently cross-checked
+enough to add to `confirmed_real_map_v2.txt` with this file's usual rigor,
+and (per this project's own guardrails) full biographical prose fields
+like `profile`/`career`/`anecdotes` are expected to need many more such
+bytes the charmap was never built to cover (it was built from short club
+names, not life-story prose). Requiring every string field to decode
+strictly would block roster parsing for any player whose full legal name
+or biography happens to need an uncommon byte — which turned out to be
+the common case, not an edge case. **Fix:** `short_name` alone stays on
+the strict `Reader::string` path (§6.6 confirmed zero unmapped bytes
+across all 27 real players for this specific field, and it's what the
+gap-search's plausibility check actually depends on); `long_name` and the
+10 fields from `birthplace` through `career` now decode **tolerantly** via
+a new `read_lossy_string`/`decode_lossy` helper (substituting
+`'\u{FFFD}'` for any charmap-unmapped byte instead of erroring). This is a
+deliberate, documented leniency for identity/biographical *text content*
+specifically — it does not touch `charmap.rs`'s own strict `decode`/
+`encode` contract (still hard-erroring, still what `dbc.rs`'s
+byte-exact override-format round-trip depends on) — and does not weaken
+the roster's *structural* correctness, which still rests on `short_name`
+decoding strictly plus every enum-shaped byte (`roles`/`skin`/`hair`/
+`demarcation`/`attrs`) landing in its confirmed real-data range.
+
+With both fixes, `parses_real_river_record_from_the_users_own_pkf_if_present`
+(`crates/pcf-codec/src/container.rs`) passes against the real file,
+asserting `players.len() == 27`, the real goalkeeper/portero pattern from
+§6.6's table, and several more of the historically-documented real players
+by name at their confirmed roster positions. Running
+`examples/dump_container.rs` file-wide: of the 55 real domestic records,
+**54 parse successfully** (§8.3's still-open `0x56` charmap byte blocks the
+55th, San Martín SJ) and **all 54 of those also get a complete,
+non-empty player roster** — e.g. San Lorenzo (23 players), Boca (23),
+Independiente (21), all the way down to smaller clubs like Newell's (1
+player — plausibly a thinner real record for a lower-priority club, the
+same "thinner records for smaller clubs" pattern §8.2 already noted for
+missing coach chains) and the special "Juveniles ARGENTINA" entry (52).
 
 ## 9. Enumerating all domestic team records — CONFIRMED, high confidence
 

@@ -11,26 +11,12 @@
 
 use pcf_model::{
     AttackType, Attributes, Clearance, Coach, Date, Dbc, DbcHeader, Demarcation, Division, Hair,
-    LeagueResult, Marking, Player, Pressing, Role, Skin, Tackling, Tactics, Team, TeamIndex,
-    TeamIndexEntry, TeamStats,
+    LeagueResult, Marking, Player, Pressing, Role, Skin, Tackling, Tactics, Team, TeamStats,
 };
 
-pub fn team_index() -> TeamIndex {
-    // Country code 3 = Argentina, pointer 9013 = Boca / 9001 = River — both
-    // confirmed against real reference data, see fixtures/pointers/*.csv.
-    vec![
-        TeamIndexEntry {
-            pointer: 9013,
-            short_name: "BOCA".into(),
-            country: 3,
-        },
-        TeamIndexEntry {
-            pointer: 9001,
-            short_name: "RIVER".into(),
-            country: 3,
-        },
-    ]
-}
+// `team_index()` (the old 2-entry BOCA/RIVER fixture) was removed: `load_pkf`
+// now parses the real `.PKF` container (`pcf_codec::container`) instead of
+// returning this mock, and nothing else in this crate referenced it.
 
 pub fn dbc() -> Dbc {
     Dbc {
@@ -197,7 +183,29 @@ pub fn blank_dbc() -> Dbc {
             pressing: Pressing::OwnHalf,
             formation_blob: vec![],
         },
-        coach: None,
+        // A domestic (`is_foreign: false`) team must carry a `Coach` for
+        // `pcf_codec::DbcCodec::write` to succeed (see `dbc.rs`'s
+        // `dbc_missing_coach` check) — this used to be `None`, which made
+        // `new_dbc(None)`'s output silently unwritable by `save_dbc` once
+        // `save_dbc` started calling the real codec instead of a JSON
+        // placeholder. An empty-but-present `Coach` (same "identity fields
+        // empty, free-text fields \"x\"" convention this file already uses
+        // for `Team`) keeps the blank template both a believable "nothing
+        // entered yet" state and a real, writable `Dbc`.
+        coach: Some(Coach {
+            pointer: 0,
+            short_name: String::new(),
+            long_name: String::new(),
+            profile: "x".into(),
+            systems: "x".into(),
+            palmares: "x".into(),
+            anecdotes: "x".into(),
+            last_season: "x".into(),
+            career_coach: "ND,ND,ND,ND,ND==".into(),
+            was_player: false,
+            career_player: "x".into(),
+            declarations: "x".into(),
+        }),
         players: vec![],
     }
 }

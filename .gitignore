@@ -23,3 +23,6 @@ fixtures/manager/*.exe
 fixtures/manager/*.bak
 !fixtures/manager/*synthetic*
 .commit-msg.txt
+
+# Claude Code harness internals, not project content.
+/.claude/

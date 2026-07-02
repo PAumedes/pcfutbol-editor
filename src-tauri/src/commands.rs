@@ -9,23 +9,202 @@
 //! so every command here is unit-tested as a plain Rust function — no
 //! webview required.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use pcf_codec::container::ContainerTeamRecord;
 use pcf_model::{
     AssetResult, CharmapInfo, Dbc, ExportReport, ManagerPatch, PatchReport, PcfError, PointerMode,
-    Project, TeamIndex,
+    Project, TeamIndex, TeamIndexEntry,
 };
 
 use crate::mock;
 
-/// Load the team index from a `.PKF` container.
+/// Synthetic team-pointer range used when a container-decoded `short_name`
+/// doesn't cross-reference against `fixtures/pointers/team_pointers.csv`'s
+/// real Argentina pointers (see `resolve_team_pointer`'s doc comment for
+/// why an exact-name cross-reference is attempted at all, and why it won't
+/// always hit). Chosen deliberately far outside the real catalog's used
+/// range (`fixtures/pointers/team_pointers.csv` tops out at `9958`) so a
+/// synthetic pointer can never collide with a genuine one.
+const SYNTHETIC_POINTER_BASE: u16 = 60_000;
+
+/// Loads the byte↔char substitution table needed to decode `.PKF`/`.DBC`
+/// text (PLAN.md §9 risk #1) from `fixtures/charmap/confirmed_real_map_v2.txt`
+/// — the more complete of the two real (non-synthetic) charmaps, per
+/// `fixtures/charmap/README.md` and `crates/pcf-codec/examples/dump_container.rs`'s
+/// own default.
 ///
-/// TODO(D): swap for `pcf_codec::Pkf::load(path)?.index()` once Agent A lands it.
+/// TODO(D): this resolves the charmap path relative to `CARGO_MANIFEST_DIR`
+/// at *compile* time, which works from any `cargo build`/`cargo test`
+/// invocation (dev container or otherwise) since it's baked into the
+/// binary rather than resolved against the process's runtime working
+/// directory — but it still assumes the source tree (and therefore
+/// `fixtures/`) is present next to wherever this was compiled. A packaged
+/// release build needs this bundled as a proper Tauri resource (see
+/// `tauri.conf.json`'s `bundle.resources`) and loaded via the app handle's
+/// resource-dir API instead. Not solved in this pass.
+fn load_charmap() -> Result<pcf_codec::CharMap, PcfError> {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("fixtures")
+        .join("charmap")
+        .join("confirmed_real_map_v2.txt");
+    pcf_codec::CharMap::load(&path)
+}
+
+/// Cross-references real Argentina team pointers out of
+/// `fixtures/pointers/team_pointers.csv` (community reference data, not
+/// proprietary game content — see that file's own header) by lowercase
+/// `short_name` match. Returns an empty table (never an error) if the CSV
+/// can't be read, so a missing/misplaced fixtures dir degrades to "every
+/// team gets a synthetic pointer" rather than failing `load_pkf` outright.
+///
+/// **Why name-match at all, and why it won't always hit:** the container
+/// format (`fixtures/PKF_FORMAT.md` §6) doesn't carry an explicit per-team
+/// pointer field anywhere `container.rs` currently parses, so there's no
+/// byte-level source of truth to read one from. The CSV's names don't
+/// always match the container's decoded `short_name` verbatim (e.g. the
+/// CSV's "Gimnasia (LP)" vs. the container's decoded "Gim. Esgrima (LP)"
+/// for the same real club, per PKF_FORMAT.md §9) — when they don't match,
+/// `resolve_team_pointer` falls back to a synthetic pointer rather than
+/// guess at a fuzzy match.
+fn load_argentina_pointer_table() -> HashMap<String, u16> {
+    let mut table = HashMap::new();
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("fixtures")
+        .join("pointers")
+        .join("team_pointers.csv");
+    let Ok(contents) = fs::read_to_string(&path) else {
+        return table;
+    };
+
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') || line.starts_with("pointer,") {
+            continue;
+        }
+        let mut parts = line.splitn(3, ',');
+        let (Some(ptr_str), Some(name), Some(country)) = (parts.next(), parts.next(), parts.next())
+        else {
+            continue;
+        };
+        let Ok(pointer) = ptr_str.trim().parse::<u16>() else {
+            continue;
+        };
+        // Restrict to the Argentina block (country == "Argentina") plus the
+        // Argentina-specific "special" entries (e.g. "Estrellas Argentina",
+        // "Juveniles Argentina"), which have an empty `country` column in
+        // the CSV but say "Argentina" in the name itself. Without this
+        // restriction, a name like "Racing" would ambiguously match both
+        // the real Argentina club and e.g. a Uruguayan club of the same
+        // name elsewhere in the catalog.
+        let is_argentina =
+            country.trim() == "Argentina" || name.to_lowercase().contains("argentina");
+        if is_argentina {
+            table.insert(name.trim().to_lowercase(), pointer);
+        }
+    }
+    table
+}
+
+/// Resolves every domestic team record's team-index pointer, using the
+/// same logic for both `load_pkf` and `load_pkf_team` so their pointer
+/// numbering can never diverge between the two commands.
+fn resolve_team_pointer(
+    record: &ContainerTeamRecord,
+    pointer_table: &HashMap<String, u16>,
+    synthetic_counter: &mut u16,
+) -> u16 {
+    match pointer_table.get(&record.short_name.to_lowercase()) {
+        Some(&pointer) => pointer,
+        None => {
+            let pointer = SYNTHETIC_POINTER_BASE.wrapping_add(*synthetic_counter);
+            *synthetic_counter += 1;
+            pointer
+        }
+    }
+}
+
+/// Reads and parses a `.PKF` container, returning every successfully
+/// decoded domestic team record paired with its resolved
+/// [`TeamIndexEntry`]. Shared by `load_pkf` (which only needs the index)
+/// and `load_pkf_team` (which needs the full record for one team) so
+/// there's exactly one place that reads the file, loads the charmap, and
+/// resolves pointers.
+///
+/// Per `pcf_codec::container::parse_pkf_container`'s own design note: a
+/// single record's parse failure (e.g. an unrecognized special entry, or a
+/// charmap gap — PKF_FORMAT.md §8 UPDATE 2 documents ~16 of 55 real records
+/// currently failing this way over an unconfirmed parenthesis glyph) does
+/// not fail the whole container; it's just skipped.
+fn load_pkf_records(path: &str) -> Result<Vec<(TeamIndexEntry, ContainerTeamRecord)>, PcfError> {
+    require_exists(path, "pkf_not_found")?;
+    let bytes = fs::read(path).map_err(|e| io_error("load_pkf", path, e))?;
+    let charmap = load_charmap()?;
+    let outcomes = pcf_codec::parse_pkf_container_verbose(&bytes, &charmap);
+
+    let pointer_table = load_argentina_pointer_table();
+    let mut synthetic_counter: u16 = 0;
+
+    let mut out = Vec::new();
+    for outcome in outcomes {
+        let Ok(record) = outcome.result else {
+            continue;
+        };
+        let pointer = resolve_team_pointer(&record, &pointer_table, &mut synthetic_counter);
+        let entry = TeamIndexEntry {
+            pointer,
+            short_name: record.short_name.clone(),
+            country: record.country,
+        };
+        out.push((entry, record));
+    }
+    Ok(out)
+}
+
+/// Load the team index from a `.PKF` container.
 #[tauri::command]
 pub fn load_pkf(path: String) -> Result<TeamIndex, PcfError> {
-    require_exists(&path, "pkf_not_found")?;
-    Ok(mock::team_index())
+    Ok(load_pkf_records(&path)?
+        .into_iter()
+        .map(|(entry, _)| entry)
+        .collect())
+}
+
+/// Load one team's full `Dbc` out of an already-scanned `.PKF` container,
+/// by the pointer `load_pkf`'s `TeamIndex` reported for it.
+///
+/// contract-change: new command, not part of PLAN.md §4.3's original list
+/// (see the note appended there). `open_dbc` was deliberately left alone
+/// rather than repurposed for this — it documents "open an existing DBC
+/// file" (a single-team override file on disk), which is a different
+/// shape of request than "pick one team out of an already-loaded, larger
+/// PKF container by pointer"; overloading its meaning would have made both
+/// call sites more confusing for no real code-sharing benefit (the two
+/// commands read completely different file formats).
+///
+/// Like the rest of this command layer, this is deliberately stateless: it
+/// re-reads and re-parses `path` on every call rather than caching a
+/// previous `load_pkf` result, so the pointer numbering it produces is
+/// always the exact same numbering `load_pkf` itself would report for the
+/// same file (see `load_pkf_records`).
+#[tauri::command]
+pub fn load_pkf_team(path: String, pointer: u16) -> Result<Dbc, PcfError> {
+    let records = load_pkf_records(&path)?;
+    let (_, record) = records
+        .into_iter()
+        .find(|(entry, _)| entry.pointer == pointer)
+        .ok_or_else(|| {
+            PcfError::new(
+                "pkf_team_not_found",
+                format!("no team with pointer {pointer} found in this PKF"),
+            )
+            .with_context(path.clone())
+        })?;
+    Ok(pcf_codec::container_bridge::container_team_to_dbc(&record))
 }
 
 /// Open a single team `.DBC` file.
@@ -39,10 +218,16 @@ pub fn open_dbc(path: String) -> Result<Dbc, PcfError> {
 
 /// Write a `.DBC` file for `dbc` into `out_dir`, returning the filename written.
 ///
-/// TODO(D): swap the placeholder byte payload for `pcf_codec::Dbc::write(&dbc)`
-/// once Agent A lands it. The team-pointer-from-players heuristic below is
-/// also a stand-in: once the PKF index / real pointer plumbing exists this
-/// should take the team's real pointer instead of guessing from player 1.
+/// Uses the real `pcf_codec::DbcCodec::write` (Agent A's already-working
+/// override-file codec) rather than the earlier placeholder-JSON stand-in
+/// (the stale `TODO(D)` this replaces) — this is the "saving" half of the
+/// architecture: a user's edits always land as a new `EQ97####.DBC`
+/// override file, never written back into the read-only `EQ003003.PKF`
+/// container itself (see `pcf_codec::container`'s own module docs for why
+/// that format isn't touched by this codec at all). The team-pointer
+/// heuristic below is still a stand-in: once a `Dbc` carries its own real
+/// team pointer end to end (rather than inferring one from player pointer
+/// 1's block), this should use that instead.
 #[tauri::command]
 pub fn save_dbc(dbc: Dbc, out_dir: String, mode: PointerMode) -> Result<String, PcfError> {
     let team_pointer = derive_team_pointer(&dbc, mode);
@@ -51,9 +236,14 @@ pub fn save_dbc(dbc: Dbc, out_dir: String, mode: PointerMode) -> Result<String, 
     let dir = PathBuf::from(&out_dir);
     fs::create_dir_all(&dir).map_err(|e| io_error("save_dbc", &out_dir, e))?;
 
+    let charmap = load_charmap()?;
+    let bytes = {
+        use pcf_codec::DbcCodec;
+        dbc.write(&charmap)?
+    };
+
     let out_path = dir.join(&filename);
-    let placeholder = mock_dbc_bytes(&dbc);
-    fs::write(&out_path, placeholder)
+    fs::write(&out_path, bytes)
         .map_err(|e| io_error("save_dbc", &out_path.to_string_lossy(), e))?;
 
     Ok(filename)
@@ -99,8 +289,7 @@ pub fn import_photo(
 /// (Appendix B): team DBC overrides under `DBDAT/EQ003003/`, asset
 /// folders `MINIESC`, `NANOESC`, `MINIFOTOS` as siblings under `DBDAT/`.
 ///
-/// TODO(D): once Agents A/B land, replace the placeholder DBC bytes with
-/// `pcf_codec::Dbc::write` and stop pre-creating empty asset folders (B's
+/// TODO(D): once Agent B lands, stop pre-creating empty asset folders (its
 /// import commands will have already populated them via project state).
 #[tauri::command]
 pub fn export_dbdat(project: Project, game_dir: String) -> Result<ExportReport, PcfError> {
@@ -121,11 +310,16 @@ pub fn export_dbdat(project: Project, game_dir: String) -> Result<ExportReport, 
         warnings.push("project has no teams to export".to_string());
     }
 
+    let charmap = load_charmap()?;
     for dbc in &project.dbcs {
         let team_pointer = derive_team_pointer(dbc, PointerMode::Auto);
         let filename = pcf_model::pointers::team_filename(team_pointer);
         let out_path = container.join(&filename);
-        fs::write(&out_path, mock_dbc_bytes(dbc))
+        let bytes = {
+            use pcf_codec::DbcCodec;
+            dbc.write(&charmap)?
+        };
+        fs::write(&out_path, bytes)
             .map_err(|e| io_error("export_dbdat", &out_path.to_string_lossy(), e))?;
         written_files.push(
             out_path
@@ -236,13 +430,6 @@ fn io_error(op: &str, path: &str, e: std::io::Error) -> PcfError {
     PcfError::new("io_error", format!("{op} failed: {e}")).with_context(path.to_string())
 }
 
-/// Placeholder serialization until `pcf_codec::Dbc::write` lands. Keeping
-/// this JSON (rather than raw garbage bytes) makes the placeholder file
-/// inspectable during development without pretending it's a real DBC.
-fn mock_dbc_bytes(dbc: &Dbc) -> Vec<u8> {
-    serde_json::to_vec_pretty(dbc).unwrap_or_default()
-}
-
 /// TODO(D): remove once teams carry a real pointer (from the PKF index /
 /// codec) instead of being inferred from player pointer 1's block.
 fn derive_team_pointer(dbc: &Dbc, _mode: PointerMode) -> u16 {
@@ -303,14 +490,19 @@ mod tests {
     }
 
     #[test]
-    fn load_pkf_returns_team_index_when_file_exists() {
+    fn load_pkf_returns_empty_index_for_a_file_with_no_domestic_records() {
+        // Real parsing now happens (`pcf_codec::container`), so an
+        // existing-but-content-free file legitimately yields zero teams
+        // rather than erroring — `find_domestic_team_records` scans the
+        // whole byte stream for a specific header shape and finds none in
+        // 4 arbitrary bytes. This replaces the old test, which only
+        // checked the mock's hardcoded 2-team fixture.
         let dir = temp_dir("load-pkf");
         let path = dir.join("EQ003003.PKF");
         fs::write(&path, b"stub").unwrap();
 
         let index = load_pkf(path.to_string_lossy().into_owned()).unwrap();
-        assert_eq!(index.len(), 2);
-        assert_eq!(index[0].short_name, "BOCA");
+        assert!(index.is_empty());
     }
 
     #[test]
@@ -338,11 +530,25 @@ mod tests {
     fn save_dbc_writes_expected_filename() {
         let dir = temp_dir("save-dbc");
         let dbc = mock::dbc(); // player pointer 1 -> load_order 1 -> team pointer 1
-        let filename =
-            save_dbc(dbc, dir.to_string_lossy().into_owned(), PointerMode::Auto).unwrap();
+        let filename = save_dbc(
+            dbc.clone(),
+            dir.to_string_lossy().into_owned(),
+            PointerMode::Auto,
+        )
+        .unwrap();
 
         assert_eq!(filename, "EQ970001.DBC");
-        assert!(dir.join(&filename).is_file());
+        let out_path = dir.join(&filename);
+        assert!(out_path.is_file());
+
+        // Verify this is a real, byte-level `.DBC` file (not the old JSON
+        // placeholder) by reading it back through `pcf_codec::DbcCodec` and
+        // checking it round-trips to the same `Dbc` that was saved.
+        use pcf_codec::DbcCodec;
+        let charmap = load_charmap().unwrap();
+        let bytes = fs::read(&out_path).unwrap();
+        let read_back = Dbc::read(&bytes, &charmap).unwrap();
+        assert_eq!(read_back, dbc);
     }
 
     #[test]
@@ -362,7 +568,12 @@ mod tests {
         let dbc = new_dbc(None).unwrap();
         assert_eq!(dbc.team.short_name, "");
         assert!(dbc.players.is_empty());
-        assert!(dbc.coach.is_none());
+        // Not `None`: a domestic (`is_foreign: false`) `Dbc` must carry
+        // *some* `Coach` to be writable via `save_dbc`'s real
+        // `DbcCodec::write` call (see `mock::blank_dbc`'s doc comment) —
+        // the blank template's coach is present but empty, not absent.
+        let coach = dbc.coach.expect("blank template must still be writable");
+        assert_eq!(coach.short_name, "");
     }
 
     #[test]
@@ -539,5 +750,123 @@ mod tests {
             division: Division::First,
         };
         assert!(dbc.team.league_history.iter().all(|r| *r == expected));
+    }
+
+    // -----------------------------------------------------------------
+    // Real-fixture-aware tests, mirroring `crates/pcf-codec/src/container.rs`'s
+    // own `parses_real_river_record_from_the_users_own_pkf_if_present`:
+    // never fail just because the real, gitignored `.PKF` isn't present on
+    // this machine (CI never has it, and it's read-only user data per this
+    // project's own guardrails). If it *is* present, actually exercise
+    // `load_pkf`/`load_pkf_team` end to end and assert real,
+    // independently-checkable facts.
+    // -----------------------------------------------------------------
+
+    const REAL_PKF_PATH: &str = "/c/PCF6AR/DBDAT/EQ003003.PKF";
+
+    #[test]
+    fn load_pkf_finds_dozens_of_real_argentine_teams_if_the_users_own_pkf_is_present() {
+        if std::fs::metadata(REAL_PKF_PATH).is_err() {
+            println!(
+                "{REAL_PKF_PATH} not found -- skipping, this test only runs meaningfully on a \
+                 machine with the user's own legally-owned copy of the game (never committed)"
+            );
+            return;
+        }
+
+        let index = load_pkf(REAL_PKF_PATH.to_string()).unwrap();
+
+        // PKF_FORMAT.md §9: 55 real domestic records exist in the file;
+        // §8 UPDATE 2 documents ~39 currently decoding cleanly (the rest
+        // fail on an unconfirmed parenthesis glyph) -- that number can only
+        // grow as the charmap improves, never regress below a healthy
+        // fraction of the file's real teams, so this is a loose floor, not
+        // an exact count tied to today's charmap coverage.
+        assert!(
+            index.len() >= 30,
+            "expected at least 30 successfully-decoded domestic teams, got {}",
+            index.len()
+        );
+
+        let boca = index
+            .iter()
+            .find(|e| e.short_name == "Boca")
+            .expect("expected to find Boca in the real team index");
+        assert_eq!(boca.country, 3);
+
+        assert!(
+            index.iter().any(|e| e.short_name == "River"),
+            "expected to find River in the real team index"
+        );
+
+        // No two teams should ever share a resolved pointer -- that would
+        // make `load_pkf_team` ambiguous.
+        let mut pointers: Vec<u16> = index.iter().map(|e| e.pointer).collect();
+        pointers.sort_unstable();
+        pointers.dedup();
+        assert_eq!(
+            pointers.len(),
+            index.len(),
+            "resolved team pointers must be unique"
+        );
+    }
+
+    #[test]
+    fn load_pkf_team_bridges_rivers_real_container_record_into_a_real_dbc() {
+        if std::fs::metadata(REAL_PKF_PATH).is_err() {
+            println!(
+                "{REAL_PKF_PATH} not found -- skipping, see the sibling test's comment for why"
+            );
+            return;
+        }
+
+        let index = load_pkf(REAL_PKF_PATH.to_string()).unwrap();
+        let river_entry = index
+            .iter()
+            .find(|e| e.short_name == "River")
+            .expect("expected to find River in the real team index");
+
+        let dbc = load_pkf_team(REAL_PKF_PATH.to_string(), river_entry.pointer).unwrap();
+
+        // Same real-world facts `container.rs`'s own real-fixture test
+        // checks (PKF_FORMAT.md §6.2/§6.5) -- confirming the bridge carries
+        // them through into the frozen `pcf_model::Dbc` shape unchanged.
+        assert_eq!(dbc.team.short_name, "River");
+        assert_eq!(dbc.team.stadium_name, "Antonio Vespucio Liberti");
+        assert_eq!(dbc.team.capacity, 76_687);
+        assert_eq!(dbc.team.founded, 1901);
+        assert_eq!(dbc.team.long_name, "Club Atlético River Plate");
+        assert_eq!(dbc.team.president, "Alfredo Angel Dávicce");
+        assert!(!dbc.header.is_foreign);
+
+        let coach = dbc
+            .coach
+            .clone()
+            .expect("River's real container record has a confirmed coach chain");
+        assert_eq!(coach.short_name, "Ramón Díaz");
+        assert_eq!(coach.long_name, "Ramón Angel DIAZ");
+
+        // The bridged `Dbc` must also be a real, writable override file --
+        // exercise the full loop this feature is meant to unlock (load a
+        // team straight out of the PKF, then save it as an override
+        // without ever touching the read-only container).
+        use pcf_codec::DbcCodec;
+        let charmap = load_charmap().unwrap();
+        let bytes = dbc.write(&charmap).expect("bridged Dbc must be writable");
+        let read_back = Dbc::read(&bytes, &charmap).expect("written bytes must be re-readable");
+        assert_eq!(read_back, dbc);
+    }
+
+    #[test]
+    fn load_pkf_team_errors_on_unknown_pointer() {
+        if std::fs::metadata(REAL_PKF_PATH).is_err() {
+            println!(
+                "{REAL_PKF_PATH} not found -- skipping, see the sibling test's comment for why"
+            );
+            return;
+        }
+
+        let err = load_pkf_team(REAL_PKF_PATH.to_string(), 0xdead).unwrap_err();
+        assert_eq!(err.code, "pkf_team_not_found");
     }
 }

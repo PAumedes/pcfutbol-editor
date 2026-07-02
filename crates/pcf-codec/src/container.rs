@@ -11,12 +11,14 @@
 //! also describe this container's own, independently-confirmed shape.
 //!
 //! Every field on [`ContainerTeamRecord`] traces to a specific byte offset
-//! cited in `fixtures/PKF_FORMAT.md` §6.1/§6.2/§6.5. The full player-roster
-//! layout is **not** confirmed yet (§6.6-§6.7: the marker/name-string shape
-//! roughly matches the override format, but the fixed fields between
-//! `number` and `short_name` don't) — rather than guess at it, everything
-//! from after the coach chain (or after `president`, if no coach chain is
-//! found) onward is kept as an opaque `trailing_raw` blob.
+//! cited in `fixtures/PKF_FORMAT.md` §6.1/§6.2/§6.5/§6.6. The full
+//! player-roster layout **is** confirmed (§6.6-§6.7: all 27 of River's real
+//! players decode end-to-end, byte-for-byte matching `dbc.rs::read_player`'s
+//! field order from `slot` onward) — [`parse_player_record`] and
+//! [`parse_player_roster`] implement it, feeding [`ContainerTeamRecord::players`].
+//! Only a small remainder after the best-effort roster walk (normally just
+//! the 1-byte end-of-roster terminator, per §6.6) is kept as an opaque
+//! `trailing_raw` blob.
 //!
 //! String fields use the exact same wire shape as the override format's
 //! `crate::cursor::Reader::string` (u16 LE length prefix + charmap bytes,
@@ -68,6 +70,25 @@ const DIR_ENTRY_LEN: usize = 38;
 /// single-byte `0x02` `COACH_MARKER`.
 const COACH_MARKER: [u8; 2] = [0x02, 0x02];
 
+/// Single-byte player-record marker (PKF_FORMAT.md §6.6) — matches the
+/// override format's `PLAYER_MARKER` byte value, though the fields that
+/// follow it differ (see [`parse_player_record`]'s doc comment).
+const PLAYER_MARKER: u8 = 0x01;
+
+/// Upper bound on how far [`find_short_name_start`] will search past
+/// `number` for a plausible `short_name` length-prefix, before giving up.
+/// Matches `examples/investigate_player_layout.rs`'s own cap — real data
+/// never needed more than 3 bytes of gap (§6.6).
+const GAP_SEARCH_MAX: usize = 8;
+
+/// Plausible length range for a player's `short_name`/`long_name` string,
+/// used both by the gap-search heuristic below and as a sanity bound.
+/// PKF_FORMAT.md §6.6 doesn't cite an exact upper bound; 64 is a generous
+/// margin above the longest real names seen (River's longest is well under
+/// 20 bytes) while still ruling out a false-positive length prefix landing
+/// on unrelated binary data.
+const PLAYER_STRING_LEN_MAX: usize = 64;
+
 /// A domestic team's confirmed fields, decoded from a single `.PKF`
 /// container record. See PKF_FORMAT.md §6.2 for the byte-offset evidence
 /// behind each field (offsets below are cited relative to the record's own
@@ -118,12 +139,30 @@ pub struct ContainerTeamRecord {
     /// boundary between `president` and the coach marker — still
     /// unconfirmed per §6.3 — happens to not contain one).
     pub coach: Option<ContainerCoachStub>,
-    /// Everything from right after the coach chain's confirmed fields
-    /// (or right after `president`, if no coach chain was found) through
-    /// the end of the record. Covers the still-unconfirmed team-stats /
-    /// history / tactics / palmarés region (§6.3) and the full player
-    /// roster (§6.6-§6.7) — deliberately left opaque rather than guessed
-    /// at, per the project's "don't force a shaky parser" guardrail.
+    /// The full player roster (PKF_FORMAT.md §6.6-§6.7), parsed via
+    /// [`parse_player_roster`] starting right after the coach chain's
+    /// confirmed fields (or right after `president`, if no coach chain was
+    /// found). **Not** the still-unconfirmed team-stats/history/tactics
+    /// region (§6.3) that sits *before* the player roster in the real byte
+    /// layout — that region is not parsed by this module at all and its
+    /// bytes are silently skipped over by the coach-marker heuristic scan
+    /// (see `find_coach_stub`'s doc comment) the same way they always were.
+    /// Degrades gracefully rather than failing the whole team: if a player
+    /// record fails to parse partway through the roster (not seen on the
+    /// real 27-player River roster, but not proven impossible for some
+    /// other team's data), whatever players parsed successfully before the
+    /// failure are kept here rather than discarding the whole roster.
+    pub players: Vec<ContainerPlayerRecord>,
+    /// Bytes left over after the best-effort player-roster walk above
+    /// stopped (see `players`' doc comment). Normally just the 1-byte
+    /// end-of-roster terminator noted in §6.7's worked example, but if
+    /// roster-walking stopped early because a player record failed to
+    /// parse, this holds that player's bytes onward instead — kept
+    /// verbatim rather than silently dropped, so no data disappears even
+    /// on an edge case not seen in the River sample. (Previously this field
+    /// held the *entire* unparsed remainder, back when player-roster
+    /// parsing wasn't implemented yet — see PKF_FORMAT.md §6.6-§6.7 and
+    /// this module's own history for that earlier placeholder meaning.)
     pub trailing_raw: Vec<u8>,
 }
 
@@ -142,6 +181,492 @@ pub struct ContainerCoachStub {
     pub short_name: String,
     /// §6.5 offset 498+ (length-prefixed) — e.g. "Ramón Angel DIAZ".
     pub long_name: String,
+}
+
+/// One player's confirmed fields, decoded from a single container
+/// player-record (PKF_FORMAT.md §6.6, very-high-confidence: all 27 of
+/// River's real players decode end-to-end matching the real 1998-99 squad).
+///
+/// **Not** `pcf_model::Player`: this container's player-record framing has
+/// two confirmed, real structural differences from the override `.dbc`
+/// format (the `pointer`/`gap` fields before `short_name`, and the fact
+/// `short_name`/`long_name` still come before `slot`/`origin`/etc, matching
+/// `dbc.rs::read_player`'s ACTUAL field order rather than the naive "struct
+/// literal order" a first reading of `pcf_model::Player` might suggest) —
+/// see this module's own top-of-file doc comment for why `ContainerTeamRecord`
+/// and `ContainerCoachStub` are similarly local, non-reused types. `roles`,
+/// `skin`, `hair`, and `demarcation` are kept as raw bytes rather than
+/// `pcf_model`'s enums for the same reason `ContainerTeamRecord` keeps
+/// `country`/`pitch_size` raw: this container format's exact semantics for
+/// an out-of-range byte aren't guaranteed identical to the override
+/// format's strict enum validation, so applying that validation here could
+/// turn a merely-unusual-but-real byte into a spurious hard parse failure.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContainerPlayerRecord {
+    /// Large, team-external, load-order-style value (§6.6: confirmed real
+    /// examples range from ~6400 to ~25600) — not the same kind of small
+    /// "pointer" as `ContainerCoachStub::pointer`.
+    pub pointer: u16,
+    /// Shirt number (dorsal).
+    pub number: u8,
+    /// The variable-length, still-unexplained gap between `number` and
+    /// `short_name`'s own length prefix (§6.6): **3 bytes** for the very
+    /// first player in a roster, **0 bytes** for every other player
+    /// confirmed so far. Kept verbatim rather than discarded, since its
+    /// meaning isn't resolved.
+    pub gap: Vec<u8>,
+    pub short_name: String,
+    pub long_name: String,
+    pub slot: u8,
+    /// `0` = continues (per override format semantics), per §6.6.
+    pub origin: u8,
+    /// Each byte confirmed `0x00..=0x12` on real data, matching the
+    /// override format's `Role` enum range — kept raw, see this struct's
+    /// own doc comment for why.
+    pub roles: [u8; 6],
+    pub nationality: u8,
+    /// Confirmed `1..=3` on real data (matches override `Skin` enum range).
+    pub skin: u8,
+    /// Confirmed `1..=6` on real data (matches override `Hair` enum range).
+    pub hair: u8,
+    /// Confirmed `0..=3` on real data (matches override `Demarcation` enum
+    /// range) — §6.6's `attrs.portero` cross-check confirms `0` = keeper.
+    pub demarcation: u8,
+    pub birth_day: u8,
+    pub birth_month: u8,
+    pub birth_year: u16,
+    pub height_cm: u8,
+    pub weight_kg: u8,
+    pub birth_country: u8,
+    /// `birthplace` and the 9 fields below it are decoded **losslessly but
+    /// tolerantly** (see [`decode_lossy`]), unlike `short_name`/`long_name`
+    /// above: §6.6 only confirmed those two identity fields decode with
+    /// zero unmapped bytes across all 27 real River players. These 10
+    /// free-text/biographical fields haven't been individually verified the
+    /// same way, and this project's own charmap-provenance guardrails
+    /// forbid inferring new charmap pairs from exactly this kind of
+    /// biographical prose — so any byte the current charmap doesn't cover
+    /// renders as `'\u{FFFD}'` (Unicode replacement character) rather than
+    /// hard-failing the whole player record over a field nothing else here
+    /// depends on structurally.
+    pub birthplace: String,
+    pub debut_club: String,
+    pub international: String,
+    pub profile: String,
+    pub characteristics: String,
+    pub palmares: String,
+    pub internationality: String,
+    pub anecdotes: String,
+    pub last_season: String,
+    pub career: String,
+    /// `velocidad, resistencia, agresividad, calidad, remate, regate, pase,
+    /// tiro, entradas, portero`, in that exact order (§6.6) — each byte
+    /// confirmed independently in `0..=99` on real data.
+    pub attrs: [u8; 10],
+}
+
+/// Everything a player record carries from `short_name` onward — i.e. the
+/// whole confirmed fixed-field sequence, minus the `pointer`/`number`/`gap`
+/// fields that come before it (see [`parse_player_record`]'s doc comment
+/// for why those three are handled separately).
+struct PlayerBody {
+    short_name: String,
+    long_name: String,
+    slot: u8,
+    origin: u8,
+    roles: [u8; 6],
+    nationality: u8,
+    skin: u8,
+    hair: u8,
+    demarcation: u8,
+    birth_day: u8,
+    birth_month: u8,
+    birth_year: u16,
+    height_cm: u8,
+    weight_kg: u8,
+    birth_country: u8,
+    birthplace: String,
+    debut_club: String,
+    international: String,
+    profile: String,
+    characteristics: String,
+    palmares: String,
+    internationality: String,
+    anecdotes: String,
+    last_season: String,
+    career: String,
+    attrs: [u8; 10],
+}
+
+/// `true` if `body`'s enum-shaped raw bytes all land in their confirmed
+/// real-data ranges (§6.6) — used both by [`find_short_name_start`] (to
+/// reject a `short_name` candidate that happens to decode but doesn't lead
+/// into a real player body) and by [`find_first_player_record`] (to
+/// distinguish a real player-record hit from a coincidental `0x01` byte
+/// inside the still-unparsed team-stats/tactics/coach-continuation region
+/// that precedes the roster, PKF_FORMAT.md §6.3/§6.5 — the same kind of
+/// false-positive risk `find_coach_stub`'s own doc comment describes for
+/// `0x02 0x02`).
+fn plausible_body_ranges(body: &PlayerBody) -> bool {
+    body.roles.iter().all(|&b| b <= 0x12)
+        && (1..=3).contains(&body.skin)
+        && (1..=6).contains(&body.hair)
+        && (0..=3).contains(&body.demarcation)
+        && body.attrs.iter().all(|&b| b <= 99)
+}
+
+/// Decodes one byte through `charmap`, falling back to `'\u{FFFD}'`
+/// (Unicode replacement character) instead of propagating
+/// `charmap_unknown_byte` — the per-byte building block for
+/// [`read_lossy_string`].
+fn decode_lossy_byte(charmap: &CharMap, byte: u8) -> char {
+    charmap
+        .decode(std::slice::from_ref(&byte))
+        .ok()
+        .and_then(|s| s.chars().next())
+        .unwrap_or('\u{FFFD}')
+}
+
+/// Decodes a whole byte slice the same tolerant way as
+/// [`decode_lossy_byte`], one byte at a time.
+fn decode_lossy(charmap: &CharMap, bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|&b| decode_lossy_byte(charmap, b))
+        .collect()
+}
+
+/// Reads a length-prefixed string the same wire shape as
+/// `crate::cursor::Reader::string`, but tolerating charmap gaps (see
+/// [`decode_lossy`]) instead of hard-failing on the first unrecognized
+/// byte. Still propagates a typed error on EOF (a truncated length prefix
+/// or body is a real structural problem, unlike an unmapped glyph).
+fn read_lossy_string(r: &mut Reader, charmap: &CharMap) -> Result<String, PcfError> {
+    let len = r.u16_le()? as usize;
+    let bytes = r.take(len)?;
+    Ok(decode_lossy(charmap, bytes))
+}
+
+/// Parses everything from `short_name` onward (PKF_FORMAT.md §6.6), i.e.
+/// the part of a player record that's byte-for-byte identical to
+/// `dbc.rs::read_player`'s field order — reusing `crate::cursor::Reader`'s
+/// helpers directly, since the wire shape is confirmed identical there.
+/// Returns the parsed fields plus how many bytes of `bytes` were consumed.
+///
+/// **`short_name`/`long_name` decode strictly** (via `Reader::string`,
+/// hard-erroring on any unmapped byte) — §6.6 confirmed zero unmapped
+/// bytes across all 27 real River players for these two identity fields,
+/// so a failure here is a genuine signal something's misaligned (used by
+/// [`find_short_name_start`]'s gap search to reject a wrong gap length).
+/// `birthplace` and the 9 free-text fields after it decode **tolerantly**
+/// (via [`read_lossy_string`]) instead — see [`ContainerPlayerRecord`]'s
+/// doc comment on those fields for why. This was found and fixed by
+/// running against the real file: a strict decode of every string field
+/// (the first version of this function) failed on real data because those
+/// free-text/biographical fields contain bytes outside the current
+/// 82-pair charmap that this project's guardrails don't allow inferring
+/// from biographical prose — exactly the kind of bug the rest of this
+/// module's history (PKF_FORMAT.md §8.1/§8.2) says only real-file testing
+/// catches.
+fn parse_player_body(bytes: &[u8], charmap: &CharMap) -> Result<(PlayerBody, usize), PcfError> {
+    let mut r = Reader::new(bytes);
+
+    let short_name = r.string(charmap)?;
+    // `long_name` is decoded tolerantly, NOT strictly like `short_name` --
+    // found and fixed by running against the real file: real players' full
+    // legal names (e.g. "Jorge Daniel MART[byte]NEZ") turned out to contain
+    // at least one accented-uppercase byte not yet in the 82-pair charmap
+    // (uppercase Í, plausibly -- corroborated by exactly one clean,
+    // byte-boundary-isolated citation; not confirmed with the same rigor
+    // `fixtures/charmap/confirmed_real_map_v2.txt` requires, so not merged
+    // there). Requiring `long_name` to decode strictly would block roster
+    // parsing for every player whose full name happens to need an
+    // uncommon accented capital the smaller name-only corpus never
+    // exercised, which defeats the purpose of parsing 27 players end to
+    // end. `short_name` staying strict is what `find_short_name_start`'s
+    // gap-search rejection and the "zero unmapped bytes" confidence from
+    // §6.6 actually depend on; `long_name`'s exact byte-perfect glyphs
+    // don't gate anything structural.
+    let long_name = read_lossy_string(&mut r, charmap)?;
+
+    let slot = r.u8()?;
+    let origin = r.u8()?;
+
+    let mut roles = [0u8; 6];
+    for role in roles.iter_mut() {
+        *role = r.u8()?;
+    }
+
+    let nationality = r.u8()?;
+    let skin = r.u8()?;
+    let hair = r.u8()?;
+    let demarcation = r.u8()?;
+
+    let birth_bytes = r.take(4)?;
+    let birth_day = birth_bytes[0];
+    let birth_month = birth_bytes[1];
+    let birth_year = u16::from_le_bytes([birth_bytes[2], birth_bytes[3]]);
+
+    let height_cm = r.u8()?;
+    let weight_kg = r.u8()?;
+    let birth_country = r.u8()?;
+    let birthplace = read_lossy_string(&mut r, charmap)?;
+
+    let debut_club = read_lossy_string(&mut r, charmap)?;
+    let international = read_lossy_string(&mut r, charmap)?;
+    let profile = read_lossy_string(&mut r, charmap)?;
+    let characteristics = read_lossy_string(&mut r, charmap)?;
+    let palmares = read_lossy_string(&mut r, charmap)?;
+    let internationality = read_lossy_string(&mut r, charmap)?;
+    let anecdotes = read_lossy_string(&mut r, charmap)?;
+    let last_season = read_lossy_string(&mut r, charmap)?;
+    let career = read_lossy_string(&mut r, charmap)?;
+
+    let attr_bytes = r.take(10)?;
+    let mut attrs = [0u8; 10];
+    attrs.copy_from_slice(attr_bytes);
+
+    let body = PlayerBody {
+        short_name,
+        long_name,
+        slot,
+        origin,
+        roles,
+        nationality,
+        skin,
+        hair,
+        demarcation,
+        birth_day,
+        birth_month,
+        birth_year,
+        height_cm,
+        weight_kg,
+        birth_country,
+        birthplace,
+        debut_club,
+        international,
+        profile,
+        characteristics,
+        palmares,
+        internationality,
+        anecdotes,
+        last_season,
+        career,
+        attrs,
+    };
+    Ok((body, r.offset()))
+}
+
+/// Searches forward from `gap_start` (the position right after a player
+/// record's `number` byte) for the first offset where the *entire* rest of
+/// a player record — `short_name` onward, via [`parse_player_body`] — both
+/// parses successfully and lands every enum-shaped byte in its confirmed
+/// real-data range ([`plausible_body_ranges`]).
+///
+/// Re-derives `examples/investigate_player_layout.rs`'s gap-search
+/// algorithm (PKF_FORMAT.md §6.6: the gap is genuinely variable — 3 bytes
+/// for the very first player in a roster, 0 bytes for every other one
+/// seen — so rather than assume a fixed width, this tries every candidate
+/// offset in turn and accepts the first plausible one), but validates the
+/// *whole* downstream structure rather than just checking that
+/// `short_name`'s own bytes happen to decode. That stronger check matters
+/// now that the charmap covers most of the byte range (82 confirmed
+/// pairs): a short run of essentially arbitrary bytes at the wrong
+/// (too-small) candidate gap length can easily happen to charmap-decode
+/// without error even though it isn't really a string field at all — this
+/// was found and fixed by running against the real file (River's true
+/// gap=3 first-player record was being misidentified as gap=0 or gap=1
+/// because those wrong offsets *also* decoded to *something*, only failing
+/// later once the misaligned `long_name`/enum fields were reached).
+/// Requiring the full body to parse AND satisfy [`plausible_body_ranges`]
+/// rules that out.
+fn find_short_name_start(bytes: &[u8], gap_start: usize, charmap: &CharMap) -> Option<usize> {
+    for gap_len in 0..=GAP_SEARCH_MAX {
+        let probe = gap_start + gap_len;
+        if probe + 2 > bytes.len() {
+            break;
+        }
+        // Cheap sanity check before attempting the (relatively expensive)
+        // full-body trial parse below: a plausible `short_name` length
+        // prefix should be small. This also guards against a `u16` LE
+        // value that's technically in-bounds but absurdly large coinciding
+        // with a wrong gap length.
+        let len = u16::from_le_bytes([bytes[probe], bytes[probe + 1]]) as usize;
+        if !(1..=PLAYER_STRING_LEN_MAX).contains(&len) {
+            continue;
+        }
+        if let Ok((body, _consumed)) = parse_player_body(&bytes[probe..], charmap) {
+            if plausible_body_ranges(&body) {
+                return Some(probe);
+            }
+        }
+    }
+    None
+}
+
+/// Parses one player record out of `bytes` (expected to start exactly at
+/// that player's own `0x01` marker byte, and to extend at least to the end
+/// of that one record — trailing bytes belonging to later records are
+/// fine, and are simply not consumed).
+///
+/// Implements PKF_FORMAT.md §6.6's confirmed layout: `marker` + `pointer` +
+/// `number`, then the variable-length `gap` (see [`find_short_name_start`]),
+/// then everything from `short_name` onward ([`parse_player_body`]).
+///
+/// Returns the parsed record plus how many bytes of `bytes` it consumed, so
+/// [`parse_player_roster`] can find the next record.
+pub fn parse_player_record(
+    bytes: &[u8],
+    charmap: &CharMap,
+) -> Result<(ContainerPlayerRecord, usize), PcfError> {
+    let mut r = Reader::new(bytes);
+
+    r.expect_fixed(&[PLAYER_MARKER])?;
+    let pointer = r.u16_le()?;
+    let number = r.u8()?;
+
+    let gap_start = r.offset();
+    let short_name_start = find_short_name_start(bytes, gap_start, charmap).ok_or_else(|| {
+        PcfError::new(
+            "container_player_gap_not_found",
+            format!(
+                "no plausible short_name length-prefix found within {GAP_SEARCH_MAX} bytes \
+                 after offset {gap_start}"
+            ),
+        )
+        .with_context(format!("offset={gap_start}"))
+    })?;
+    let gap = bytes[gap_start..short_name_start].to_vec();
+
+    // Already proven to parse successfully by `find_short_name_start`'s own
+    // trial parse above; re-running it here (rather than threading the
+    // already-parsed `PlayerBody` through) keeps this function's control
+    // flow simple at the cost of one redundant parse per record, which is
+    // negligible at this data size (a few hundred bytes).
+    let (body, body_len) = parse_player_body(&bytes[short_name_start..], charmap)?;
+
+    let record = ContainerPlayerRecord {
+        pointer,
+        number,
+        gap,
+        short_name: body.short_name,
+        long_name: body.long_name,
+        slot: body.slot,
+        origin: body.origin,
+        roles: body.roles,
+        nationality: body.nationality,
+        skin: body.skin,
+        hair: body.hair,
+        demarcation: body.demarcation,
+        birth_day: body.birth_day,
+        birth_month: body.birth_month,
+        birth_year: body.birth_year,
+        height_cm: body.height_cm,
+        weight_kg: body.weight_kg,
+        birth_country: body.birth_country,
+        birthplace: body.birthplace,
+        debut_club: body.debut_club,
+        international: body.international,
+        profile: body.profile,
+        characteristics: body.characteristics,
+        palmares: body.palmares,
+        internationality: body.internationality,
+        anecdotes: body.anecdotes,
+        last_season: body.last_season,
+        career: body.career,
+        attrs: body.attrs,
+    };
+    Ok((record, short_name_start + body_len))
+}
+
+/// Scans `bytes` for the first `0x01` byte that starts a *fully* parseable
+/// player record — i.e. the real start of the player roster, which per
+/// §6.3/§6.5 does NOT sit immediately after `ContainerCoachStub`'s two
+/// parsed strings (there's a large still-unconfirmed
+/// team-stats/tactics/coach-continuation region in between). Returns the
+/// byte offset of that marker, or `None` if nothing plausible is found
+/// anywhere in `bytes`.
+///
+/// `parse_player_record` succeeding is itself already a strong plausibility
+/// signal: its own gap-search ([`find_short_name_start`]) requires the
+/// *entire* downstream field structure to parse AND satisfy
+/// [`plausible_body_ranges`], not just that some bytes happen to
+/// charmap-decode — so a coincidental `0x01` inside the unconfirmed region
+/// preceding the roster would have to accidentally produce a
+/// fully-structured, range-valid player record to be mistaken for a real
+/// one here, the same low-probability false-positive risk
+/// `find_coach_stub`'s own doc comment accepts for `0x02 0x02`.
+fn find_first_player_record(bytes: &[u8], charmap: &CharMap) -> Option<usize> {
+    for i in 0..bytes.len() {
+        if bytes[i] != PLAYER_MARKER {
+            continue;
+        }
+        if parse_player_record(&bytes[i..], charmap).is_ok() {
+            return Some(i);
+        }
+    }
+    None
+}
+
+/// Walks consecutive `0x01`-marker-delimited player records starting
+/// exactly at `bytes[0]` (expected to already be a confirmed-plausible
+/// first player marker — see [`find_first_player_record`]) through to the
+/// end of `bytes`, re-deriving `examples/investigate_player_layout.rs`'s
+/// own record-boundary walk (PKF_FORMAT.md §6.6-§6.7), which validated this
+/// exact approach end-to-end on all 27 real River players with zero
+/// drift/slack across the whole roster.
+///
+/// Stops (without erroring) as soon as the next byte isn't `0x01` — per
+/// §6.7, the real roster's last player is immediately followed by a single
+/// `0x00` end-of-roster terminator, not another marker.
+pub fn parse_player_roster(
+    bytes: &[u8],
+    charmap: &CharMap,
+) -> Result<Vec<ContainerPlayerRecord>, PcfError> {
+    let mut players = Vec::new();
+    let mut pos = 0;
+    while pos < bytes.len() && bytes[pos] == PLAYER_MARKER {
+        let (player, consumed) = parse_player_record(&bytes[pos..], charmap)?;
+        pos += consumed;
+        players.push(player);
+    }
+    Ok(players)
+}
+
+/// Best-effort wrapper around [`find_first_player_record`] +
+/// [`parse_player_roster`] for [`parse_team_record`]'s use: locates the
+/// roster's real start (skipping over the unconfirmed region that precedes
+/// it, discarded the same way `find_coach_stub`'s own leading skip already
+/// is — see `ContainerTeamRecord::players`' doc comment), then walks it.
+///
+/// Degrades gracefully instead of failing the whole team record: if no
+/// plausible player marker is found at all, returns `(vec![], bytes)`
+/// unchanged (mirrors `find_coach_stub`'s `None` case). If the roster walk
+/// itself fails partway through (a single record errors out — not seen on
+/// the real 27-player River roster, but not proven impossible for some
+/// other team's data), whatever parsed successfully before the failure is
+/// kept, and everything from that failing record onward is returned as the
+/// second tuple element instead of being discarded.
+fn walk_player_roster_best_effort(
+    bytes: &[u8],
+    charmap: &CharMap,
+) -> (Vec<ContainerPlayerRecord>, Vec<u8>) {
+    let Some(start) = find_first_player_record(bytes, charmap) else {
+        return (Vec::new(), bytes.to_vec());
+    };
+
+    let mut players = Vec::new();
+    let mut pos = start;
+    while pos < bytes.len() && bytes[pos] == PLAYER_MARKER {
+        match parse_player_record(&bytes[pos..], charmap) {
+            Ok((player, consumed)) => {
+                players.push(player);
+                pos += consumed;
+            }
+            Err(_) => break,
+        }
+    }
+    (players, bytes[pos..].to_vec())
 }
 
 /// Parses one domestic team record's confirmed fields out of `bytes`
@@ -190,10 +715,11 @@ pub fn parse_team_record(bytes: &[u8], charmap: &CharMap) -> Result<ContainerTea
     let president = r.string(charmap)?;
 
     let rest = &bytes[r.offset()..];
-    let (coach, trailing_raw) = match find_coach_stub(rest, charmap) {
-        Some((end_in_rest, coach)) => (Some(coach), rest[end_in_rest..].to_vec()),
-        None => (None, rest.to_vec()),
+    let (coach, after_coach) = match find_coach_stub(rest, charmap) {
+        Some((end_in_rest, coach)) => (Some(coach), &rest[end_in_rest..]),
+        None => (None, rest),
     };
+    let (players, trailing_raw) = walk_player_roster_best_effort(after_coach, charmap);
 
     Ok(ContainerTeamRecord {
         header_prefix,
@@ -210,6 +736,7 @@ pub fn parse_team_record(bytes: &[u8], charmap: &CharMap) -> Result<ContainerTea
         unexplained_byte_after_country,
         unexplained_bytes_after_founded,
         coach,
+        players,
         trailing_raw,
     })
 }
@@ -485,6 +1012,176 @@ mod tests {
     }
 
     // -----------------------------------------------------------------
+    // Player-record test helpers (PKF_FORMAT.md §6.6).
+    // -----------------------------------------------------------------
+
+    /// Builds one syntactically-valid synthetic player record: marker,
+    /// pointer, number, an arbitrary `gap` (to exercise the gap-search
+    /// logic with both zero-length and multi-byte gaps), then the
+    /// confirmed fixed-field sequence. Only characters the synthetic
+    /// charmap covers are used for the free-text fields (kept short and
+    /// generic — not real player data).
+    fn build_synthetic_player_record(charmap: &CharMap, gap: &[u8]) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.push(PLAYER_MARKER);
+        buf.extend_from_slice(&6400u16.to_le_bytes()); // pointer
+        buf.push(9); // number (dorsal)
+        buf.extend_from_slice(gap);
+
+        write_string(&mut buf, charmap, "Real"); // short_name
+        write_string(&mut buf, charmap, "Real Madrid"); // long_name
+
+        buf.push(1); // slot
+        buf.push(0); // origin
+        buf.extend_from_slice(&[0x00, 0x01, 0x02, 0x03, 0x04, 0x12]); // roles[6], all <=0x12
+        buf.push(0x20); // nationality (arbitrary)
+        buf.push(2); // skin, 1..=3
+        buf.push(3); // hair, 1..=6
+        buf.push(1); // demarcation, 0..=3
+        buf.extend_from_slice(&[16, 4, 0x69, 0x07]); // birth: day, month, year=1897 (LE)
+        buf.push(180); // height_cm
+        buf.push(75); // weight_kg
+        buf.push(0x03); // birth_country
+
+        write_string(&mut buf, charmap, "Real"); // birthplace
+        write_string(&mut buf, charmap, "Real"); // debut_club
+        write_string(&mut buf, charmap, "Real"); // international
+        write_string(&mut buf, charmap, "Real"); // profile
+        write_string(&mut buf, charmap, "Real"); // characteristics
+        write_string(&mut buf, charmap, "Real"); // palmares
+        write_string(&mut buf, charmap, "Real"); // internationality
+        write_string(&mut buf, charmap, "Real"); // anecdotes
+        write_string(&mut buf, charmap, "Real"); // last_season
+        write_string(&mut buf, charmap, "Real"); // career
+
+        buf.extend_from_slice(&[50, 60, 70, 80, 65, 55, 45, 40, 35, 90]); // attrs[10], all <=99
+
+        buf
+    }
+
+    // -----------------------------------------------------------------
+    // Low-level player-record unit tests.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn parses_player_record_with_zero_length_gap() {
+        let charmap = synthetic_charmap();
+        let bytes = build_synthetic_player_record(&charmap, &[]);
+
+        let (player, consumed) = parse_player_record(&bytes, &charmap).expect("should parse");
+
+        assert_eq!(consumed, bytes.len());
+        assert_eq!(player.pointer, 6400);
+        assert_eq!(player.number, 9);
+        assert!(player.gap.is_empty());
+        assert_eq!(player.short_name, "Real");
+        assert_eq!(player.long_name, "Real Madrid");
+        assert_eq!(player.slot, 1);
+        assert_eq!(player.origin, 0);
+        assert_eq!(player.roles, [0x00, 0x01, 0x02, 0x03, 0x04, 0x12]);
+        assert_eq!(player.nationality, 0x20);
+        assert_eq!(player.skin, 2);
+        assert_eq!(player.hair, 3);
+        assert_eq!(player.demarcation, 1);
+        assert_eq!(player.birth_day, 16);
+        assert_eq!(player.birth_month, 4);
+        assert_eq!(player.birth_year, 1897);
+        assert_eq!(player.height_cm, 180);
+        assert_eq!(player.weight_kg, 75);
+        assert_eq!(player.birth_country, 0x03);
+        assert_eq!(player.birthplace, "Real");
+        assert_eq!(player.career, "Real");
+        assert_eq!(player.attrs, [50, 60, 70, 80, 65, 55, 45, 40, 35, 90]);
+    }
+
+    #[test]
+    fn parses_player_record_with_multi_byte_gap() {
+        let charmap = synthetic_charmap();
+        // A 3-byte gap, matching §6.6's confirmed shape for the very first
+        // player in a real roster (Saccone). The gap bytes themselves are
+        // arbitrary/unexplained (kept verbatim, not decoded).
+        let gap = [0xAA, 0xBB, 0xCC];
+        let bytes = build_synthetic_player_record(&charmap, &gap);
+
+        let (player, consumed) = parse_player_record(&bytes, &charmap).expect("should parse");
+
+        assert_eq!(consumed, bytes.len());
+        assert_eq!(player.gap, gap);
+        assert_eq!(player.short_name, "Real");
+        assert_eq!(player.long_name, "Real Madrid");
+    }
+
+    #[test]
+    fn rejects_wrong_player_marker_with_typed_error_not_panic() {
+        let charmap = synthetic_charmap();
+        let mut bytes = build_synthetic_player_record(&charmap, &[]);
+        bytes[0] = 0x02; // not PLAYER_MARKER
+        let err = parse_player_record(&bytes, &charmap).unwrap_err();
+        assert_eq!(err.code, "dbc_fixed_bytes_mismatch");
+    }
+
+    #[test]
+    fn player_record_reports_typed_error_when_no_plausible_gap_found() {
+        let charmap = synthetic_charmap();
+        // marker + pointer + number, then garbage that never yields a
+        // plausible (length-prefix, decodable-string) pair within the
+        // search window.
+        let mut bytes = vec![PLAYER_MARKER];
+        bytes.extend_from_slice(&1u16.to_le_bytes());
+        bytes.push(1);
+        bytes.extend_from_slice(&[0xFF; 32]);
+        let err = parse_player_record(&bytes, &charmap).unwrap_err();
+        assert_eq!(err.code, "container_player_gap_not_found");
+    }
+
+    #[test]
+    fn parse_player_roster_walks_consecutive_records_and_stops_at_non_marker_byte() {
+        let charmap = synthetic_charmap();
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&build_synthetic_player_record(&charmap, &[]));
+        bytes.extend_from_slice(&build_synthetic_player_record(
+            &charmap,
+            &[0xAA, 0xBB, 0xCC],
+        ));
+        bytes.push(0x00); // end-of-roster terminator, per §6.7
+
+        let players = parse_player_roster(&bytes, &charmap).expect("should parse both records");
+
+        assert_eq!(players.len(), 2);
+        assert!(players[0].gap.is_empty());
+        assert_eq!(players[1].gap, vec![0xAA, 0xBB, 0xCC]);
+    }
+
+    #[test]
+    fn find_first_player_record_skips_a_structurally_valid_but_implausible_leading_record() {
+        let charmap = synthetic_charmap();
+        // A fully-decodable, well-formed player record (same shape the
+        // parser expects) but with an out-of-range `skin` byte -- the same
+        // kind of false-positive risk `find_coach_stub`'s own doc comment
+        // flags for its `0x02 0x02` marker: a byte sequence that happens to
+        // parse structurally but isn't real player data (per §6.6's
+        // confirmed `skin` range, `1..=3`).
+        let mut bytes = build_synthetic_player_record(&charmap, &[]);
+        let skin_offset = {
+            // marker(1) + pointer(2) + number(1) + short_name(2+4) +
+            // long_name(2+11) + slot(1) + origin(1) + roles(6) = offset of
+            // nationality; skin is the next byte after that.
+            1 + 2 + 1 + (2 + 4) + (2 + 11) + 1 + 1 + 6 + 1
+        };
+        assert_eq!(
+            bytes[skin_offset], 2,
+            "sanity-check the computed skin offset"
+        );
+        bytes[skin_offset] = 0x99; // out of the confirmed 1..=3 range
+
+        let real_start = bytes.len();
+        bytes.extend_from_slice(&build_synthetic_player_record(&charmap, &[]));
+
+        let found = find_first_player_record(&bytes, &charmap);
+        assert_eq!(found, Some(real_start));
+    }
+
+    // -----------------------------------------------------------------
     // Low-level unit tests (no real file needed) — header validation.
     // -----------------------------------------------------------------
 
@@ -674,6 +1371,53 @@ mod tests {
     }
 
     // -----------------------------------------------------------------
+    // Team-level wiring: `parse_team_record` should locate and parse the
+    // player roster sitting after the coach chain, not just leave it
+    // opaque.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn parse_team_record_wires_up_the_player_roster_after_the_coach_chain() {
+        let charmap = synthetic_charmap();
+        // Simulate the real layout (§6.3/§6.5/§6.6): an unexplained region
+        // between the coach chain's two parsed strings and the real player
+        // roster start, which `find_first_player_record` must skip over.
+        // Deliberately contains no `0x01` byte at all, so this test only
+        // exercises the "skip past unrelated bytes" path, not the separate
+        // "reject a structurally-valid-but-implausible 0x01" path already
+        // covered by `find_first_player_record_skips_a_structurally_valid_
+        // but_implausible_leading_record`.
+        let unexplained_middle = vec![0x02, 0x03, 0x04];
+        let mut bytes = build_synthetic_team_record(&charmap, &[]);
+        bytes.extend_from_slice(&unexplained_middle);
+        bytes.extend_from_slice(&build_synthetic_player_record(&charmap, &[]));
+        bytes.extend_from_slice(&build_synthetic_player_record(
+            &charmap,
+            &[0xAA, 0xBB, 0xCC],
+        ));
+        bytes.push(0x00); // end-of-roster terminator
+
+        let record = parse_team_record(&bytes, &charmap).expect("should parse");
+
+        assert_eq!(record.players.len(), 2);
+        assert_eq!(record.players[0].short_name, "Real");
+        assert_eq!(record.players[1].gap, vec![0xAA, 0xBB, 0xCC]);
+        assert_eq!(record.trailing_raw, vec![0x00]);
+    }
+
+    #[test]
+    fn parse_team_record_leaves_players_empty_when_no_plausible_roster_found() {
+        let charmap = synthetic_charmap();
+        let trailing = [0x11, 0x22];
+        let bytes = build_synthetic_team_record(&charmap, &trailing);
+
+        let record = parse_team_record(&bytes, &charmap).expect("should parse");
+
+        assert!(record.players.is_empty());
+        assert_eq!(record.trailing_raw, trailing);
+    }
+
+    // -----------------------------------------------------------------
     // Real-fixture-aware test, mirroring `crates/pcf-manager/src/lib.rs`'s
     // `verify_recognizes_a_real_manager_exe_if_the_user_has_supplied_one`
     // and `tests/tests/round_trip.rs`'s golden-fixture harness: never fail
@@ -724,5 +1468,70 @@ mod tests {
             .expect("expected the confirmed coach-chain marker to be found (§6.5)");
         assert_eq!(coach.short_name, "Ramón Díaz");
         assert_eq!(coach.long_name, "Ramón Angel DIAZ");
+
+        // PKF_FORMAT.md §6.6-§6.7: the full player roster, confirmed
+        // end-to-end against all 27 real 1998-99 River Plate first-team
+        // players. Only club/player identifying names are asserted here
+        // (short_name/long_name are factual identifiers, already publicly
+        // cited in PKF_FORMAT.md itself) -- never any free-text
+        // profile/career/anecdotes field.
+        assert_eq!(
+            river.players.len(),
+            27,
+            "expected the confirmed real River roster size (§6.7)"
+        );
+
+        // §6.6's worked table: the first 4 players are goalkeepers
+        // (demarcation == 0) with `attrs.portero` clustered 75-90, and
+        // every other player checked there is <=20.
+        assert_eq!(river.players[0].short_name, "Saccone");
+        assert_eq!(river.players[1].short_name, "Costanzo");
+        assert_eq!(river.players[2].short_name, "Burgos");
+        assert_eq!(river.players[2].long_name, "Germán Adrián Ramón BURGOS");
+        assert_eq!(river.players[3].short_name, "Bonano");
+        assert_eq!(river.players[3].long_name, "Roberto Oscar BONANO");
+        for gk in &river.players[0..4] {
+            assert_eq!(
+                gk.demarcation, 0,
+                "{} should be a goalkeeper",
+                gk.short_name
+            );
+        }
+        assert_eq!(
+            river.players[2].attrs[9], 85,
+            "Burgos' portero rating (§6.6)"
+        );
+        assert_eq!(
+            river.players[3].attrs[9], 90,
+            "Bonano's portero rating (§6.6)"
+        );
+
+        // §6.6: a handful more real, historically documented squad members,
+        // at their confirmed roster positions (0-indexed: Saccone,
+        // Costanzo, Burgos, Bonano, Biscay, Villalba, Acosta, Martínez,
+        // Sarabia, Placente, Paz, Hernán Díaz, Berizzo, Sorín, Gómez,
+        // Gallardo, Astrada, Escudero, Gancedo, Berti, Solari, Saviola,
+        // Angel, Castillo, Pizzi, Rambert, Aimar).
+        let sorin = &river.players[13];
+        assert_eq!(sorin.short_name, "Sorín");
+        let gallardo = &river.players[15];
+        assert_eq!(gallardo.short_name, "Gallardo");
+        let saviola = &river.players[21];
+        assert_eq!(saviola.short_name, "Saviola");
+        let aimar = &river.players[26];
+        assert_eq!(aimar.short_name, "Aimar");
+        assert_eq!(aimar.demarcation, 2, "Aimar should be a midfielder (§6.6)");
+        assert_eq!(
+            aimar.attrs[9], 12,
+            "Aimar's portero rating, per §6.6's table"
+        );
+
+        // §6.7: the roster consumes the whole record with no drift -- only
+        // the 1-byte end-of-roster terminator should be left over.
+        assert_eq!(
+            river.trailing_raw.len(),
+            1,
+            "expected only the 1-byte end-of-roster terminator left over (§6.7)"
+        );
     }
 }

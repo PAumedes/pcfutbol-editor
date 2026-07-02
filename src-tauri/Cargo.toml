@@ -17,6 +17,7 @@ tauri-build = { version = "2" }
 
 [dependencies]
 pcf-model = { path = "../crates/pcf-model" }
+pcf-codec = { path = "../crates/pcf-codec" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
