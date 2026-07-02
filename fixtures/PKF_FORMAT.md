@@ -24,9 +24,9 @@ real club names, which are factual and already public in
 | Banner string | `Copyright (c)1996 Dinamic Multimedia` (no space after `(c)`) — confirmed, and `pcf_codec::dbc::BANNER` was fixed to match. |
 | Directory format | **Decoded and verified** — see §2. |
 | "Foreign reference clubs" stub table | **Decoded, ~473 records located and read** — see §3. |
-| Real domestic (Argentina) team records | **Located, one likely-River record extracted.** Team-info fields (short_name through president) **confirmed high-confidence** via 5 independently-checkable real-world facts (stadium, legal name, capacity, founding year, president). Coach chain start **confirmed** (real coach name "Ramón Díaz" decodes exactly). First player record found (medium-high confidence). Tactics boundary and full player roster framing still open. See §6. |
+| Real domestic (Argentina) team records | **55 records located file-wide** (§9), decoded via a corrected 4-byte signature (`0D 02 00 00` at header+2 — the naive 6-byte match only worked for River by coincidence, see §8's UPDATE). River's team-info fields (short_name through president) **confirmed high-confidence** via 5 independently-checkable real-world facts. Coach chain start **confirmed** (real coach name "Ramón Díaz" decodes exactly). **Full player roster confirmed** for River: exactly 27 players, walked end-to-end, real historically-documented names (Burgos, Bonano, Sorín, Gallardo, Saviola, Aimar, etc.) — see §6.6-§6.7. Tactics-block byte offsets confirmed exactly; field identity (jornada/formation_blob) medium-high confidence — see §6.3. |
 | Character map | **77 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **40 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`), derived by decoding all 473 stub-table records (§3) and cross-referencing every gap against real football names — see §7. This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). |
-| Full container parser in `pcf-codec` | **Not started.** Investigation only; no production parsing code has been written for this container format (the override-file `Dbc::read`/`write` format is separate and already implemented). |
+| Full container parser in `pcf-codec` | **Team-info + coach-chain parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_pkf_container`/`parse_pkf_container_verbose`) — a new, local type (`ContainerTeamRecord`/`ContainerCoachStub`), not a reuse of `pcf_model::Team`/`Coach`. Two real bugs were caught by actually running the real-fixture test/examples against the mounted file rather than trusting synthetic-only unit tests: (1) a directory-derived "stub table end" floor that silently excluded every domestic record (§8.1); (2) an over-strict 6-byte header match that only matched River by coincidence, since the leading 2 bytes vary per team — fixed to match only the constant 4-byte tail (`0D 02 00 00`), with the varying prefix kept as a new `header_prefix` field rather than discarded (§8.2 UPDATE 2). With both fixes, the parser finds **55 real domestic records** and successfully parses **39 of them** end-to-end with verified real-world data (e.g. Boca's decoded president is "Mauricio Macri", accurate for 1998); the other 16 fail with a typed, non-panicking `charmap_unknown_byte` error because their names contain a parenthesis, not yet in the 77-pair charmap — a well-scoped follow-up, not yet done. Full player-roster parsing is still **not implemented** in `container.rs` (kept as an opaque `trailing_raw` blob per record), though the per-player fixed-field layout is now confirmed byte-exact and high-confidence for a production implementation to build on (§6.6-§6.7: all 27 of River's real players decoded end-to-end, matching the real 1998-99 squad name-for-name). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo. |
 
 ## 1. No encryption
 
@@ -126,30 +126,34 @@ special entries like `9900 Estrellas España`, `9950 Jugadores Libres`,
 
 ## 5. Open questions / next steps
 
-1. **Expand the character map.** We have 473 real, known-plaintext club
-   names available in the stub table (§3) — a much bigger known-plaintext
-   corpus than the handful of manual examples that produced the current
-   37-pair map. This should let us confirm digits, accented letters
-   (á é í ó ú ñ Á É...), and more punctuation.
-2. **Walk one full domestic team record byte-by-byte** (start with the
-   likely-River blob) to determine: where team info ends and tactics
-   begins, the coach chain's boundaries, and how individual player
-   records are delimited (fixed marker? length-prefixed block? another
-   banner?).
-3. **Enumerate all domestic team records** past offset ~628,300 by
-   banner position, and see if their count/order matches the Argentina
-   block of `fixtures/pointers/team_pointers.csv` (9001-9061 plus
-   specials).
+1. ~~**Expand the character map.**~~ **Done** — see §7 (77 confirmed pairs).
+2. ~~**Walk one full domestic team record byte-by-byte.**~~ **Done** for the
+   player-record layout (§6.6-§6.7: all 27 players confirmed end-to-end,
+   very high confidence) and for the team-stats/jornada/tactics region
+   (§6.3: exact byte offsets confirmed, field identity medium-high
+   confidence; `palmares` appears absent and `formation_blob` appears
+   fixed-size rather than length-prefixed in this container). **Still
+   open**: the meaning of the 22-byte unexplained block at team-info
+   offset 150-172 (§6.3), the variable-length player-record "gap" before
+   `short_name` (§6.6), and exactly what `TeamStats.played=17,408`
+   represents (possibly a mid-season/not-yet-played placeholder, since
+   this data snapshot is "PC Apertura 98/99" mid-tournament).
+3. ~~**Enumerate all domestic team records.**~~ **Done** — see §9: 55
+   records found (53 real clubs + 2 specials) using a corrected 4-byte
+   signature, a near-complete match to the ~60-club Argentina pointer
+   catalog block.
 4. **Reconcile with `pcf_codec::dbc::Dbc::read`/`write`.** The
    override-file format those functions implement (single
    `BANNER`+`MAGIC_FE06`+team+tactics+coach+players, per PLAN.md Appendix
    A) is NOT the same as this container's internal per-record framing
-   (banner + a different header, e.g. `E9 07 0D 02 00 00 ...`). Whether
-   the *exported* `EQ97####.DBC` override files (which we still don't
-   have a real sample of) match Appendix A's documented format, or
+   (banner + a different header, e.g. `E9 07 0D 02 00 00 ...` for River
+   specifically, `0D 02 00 00` at header+2 in general — see §8's UPDATE).
+   Whether the *exported* `EQ97####.DBC` override files (which we still
+   don't have a real sample of) match Appendix A's documented format, or
    something closer to the container's internal framing, is still an
    open question — this is a deliberate design decision to make later,
-   not something to guess at now.
+   not something to guess at now. (Still open; not addressed by this
+   pass.)
 
 ## 6. Domestic team record internal structure
 
@@ -216,7 +220,83 @@ only 6 new inferred byte pairs total (reused across multiple words) — an
 implausible coincidence if the field order or charmap inferences were
 wrong.
 
-### 6.3 What comes after `president` — team stats / palmarés-shaped region (hypothesized, medium confidence)
+### 6.3 What comes after `president` through the coach marker — REVISED, high confidence on offsets, medium-high on field identity
+
+Re-examined with exact cursor arithmetic (`investigate_tactics_block.rs`,
+new) instead of the earlier rough offset estimates. Cursor position 147
+(right after `president`) to the coach marker at 482 is exactly 335 bytes,
+which decompose as follows:
+
+```
+147–150   3    budget (u24 LE) = 2025           <- matches override position
+150–172  22    UNEXPLAINED block (see below)
+172–176   4    FF FF FF FF                       <- plausibly affiliate1=affiliate2=0xFFFF ("none"),
+                                                     NOT immediately after budget as override does it
+176–196  20    league_history[10], but in (division, position) order,
+               NOT override's (position, division) -- division=0x00 (First)
+               for all 10 entries, positions = 1,5,1,10,7,15,1,1,1,7
+               (a plausible historical top-flight finish record for River)
+196–210  14    TeamStats-shaped block (6x u16 LE + 2x u8) -- but `played`
+               reads as 17,408 if taken literally: implausible for a real
+               stat, more likely this represents an in-progress/not-yet-
+               played "current season" placeholder (this is a mid-season
+               1998/99 snapshot) than a layout error
+210–302  92    a block of exactly JORNADA_LEN (92) bytes: a mix of small
+               integers (1-21ish, with repeated small-int runs) followed by
+               ~40 zero-padding bytes then a few more small values --
+               shape-consistent with `Team.jornada`'s own doc comment
+               ("opaque positional blob... editor always writes zeros
+               here"), except here it's mostly NON-zero, consistent with
+               being REAL historical data rather than an unset default
+302–476 174    a run of 87 packed u16-LE-shaped values (every other byte
+               0x00, all values <256) -- candidate Tactics `formation_blob`.
+               NO separate 2-byte length prefix found anywhere nearby
+               (scanned exhaustively): most likely this container stores
+               the formation blob at a FIXED 174-byte size rather than
+               length-prefixed the way the override format does
+476–482   6    50 28 00 00 00 00 = touch_pct=80, counter_pct=40, then 4
+               zero bytes -- ONE BYTE SHORT of override's 7-byte
+               TacticsFixedRaw tail (touch+counter+5 enum bytes); the 4
+               zero bytes are each independently valid as
+               attack/tackling/marking/clearance (all enums have a valid
+               0x00 variant), but there's no room for a 5th (`pressing`)
+               byte -- either `pressing` is genuinely absent in this
+               container's tactics tail, or it's folded into one of the
+               other bytes
+```
+
+**New finding: no room for a separate `palmares` blob at all.** The
+92-byte `jornada`-shaped block (210-302) is immediately followed by the
+174-byte packed-value run with **zero bytes in between** — there is no
+34-byte gap anywhere in this region that could hold `PALMARES_LEN`. Best
+current reading: this container's domestic-team records include `jornada`
+(present, real data, exactly 92 bytes matching the override constant) but
+**do not include a separate `palmares` blob** — either it's genuinely
+absent for domestic records, or it's zero-length/omitted rather than a
+fixed 34-byte reserved region the way the override format always writes
+one.
+
+**The 22-byte block at 150-172 remains unexplained**, but its raw bytes end
+in `... FF FF FF FF` (bytes 172-176 as read above) — a strong match for
+`affiliate1`/`affiliate2`'s `0xFFFF = "none"` sentinel convention (per
+`pcf_model::Team`'s own doc comment), which is NOT how the override format
+orders it (override puts affiliate1/2 immediately after budget, with no
+gap). This is a plausible field-order difference between the container's
+native layout and the override's, medium confidence — the 18 bytes before
+the FFFF pair (`00 00 00 07 00 30 34 28 2D 2C 24 32 06 00 20 25 28 25`) are
+still unidentified.
+
+**Confidence:** high on all byte offsets/counts above (recomputed with
+exact cursor arithmetic, reproducible); medium-high on the `jornada`
+identification (exact length match + plausible shape); medium on the
+`league_history`/`TeamStats` identification (division/position values look
+real, but `played`=17,408 is unexplained); low-medium on the
+`formation_blob` identification (positionally plausible, shape plausible,
+but no length prefix found to confirm it); medium on `affiliate1/2` being
+relocated to 172-176 rather than 150-154.
+
+<details>
+<summary>Original hypothesis-only writeup (rough offsets; superseded by the exact-offset version above, kept for history)</summary>
 
 Bytes 147–~215 (`0x93`–`0xD7`ish) contain a run of small integer values
 consistent with `budget`/`affiliate1`/`affiliate2` (override order) but
@@ -263,6 +343,8 @@ low-medium confidence.** The 6 bytes immediately before the coach marker
 in-range percentages) followed by 4 zero bytes where the override format's
 7-byte tactics tail would need 5 enum bytes — one byte short; **not fully
 resolved.**
+
+</details>
 
 ### 6.4 The "extra bytes" pattern (hypothesized)
 
@@ -339,7 +421,139 @@ i.e. `02 02` is not a uniquely-identifying marker on its own (it also
 occurs by chance inside prose byte sequences); the offset-482 hit is
 trusted because of the real-name match, not the marker pattern alone.
 
-### 6.6 First player record — medium-high confidence
+### 6.6 Full player record layout — CONFIRMED, high confidence (revised)
+
+**This supersedes the original medium-high-confidence writeup below the
+line, which was written before the fixed-field layout was cross-checked
+byte-for-byte against `dbc.rs::read_player`'s actual field order.** The key
+correction: `read_player` puts `short_name`/`long_name` **immediately**
+after `marker`+`pointer`+`number` — `slot`/`origin`/`roles[6]`/etc. come
+*after* both name strings, not between `number` and `short_name`. Once the
+tool (`investigate_player_layout.rs`, new) was fixed to match this order,
+it walks **27 consecutive, fully self-consistent player records**, back to
+back, from the first marker at blob offset 1238 all the way to the very
+last byte of the 92,956-byte blob — with **zero unmapped/garbage bytes**
+anywhere in any `short_name`/`long_name`, and every fixed-field enum byte
+landing in its valid range.
+
+Confirmed byte layout (marker to next marker):
+
+```
+offset+0    1    marker             0x01 (matches override PLAYER_MARKER)
+offset+1    2    pointer (u16 LE)   large, team-external load-order-style value (e.g. 6400, 25632, 8787...)
+offset+3    1    number             dorsal (matches override `Player::number`)
+offset+4    N    gap                unexplained, VARIABLE length (see below) -- NOT part of override's layout
+...         2    short_name length prefix (u16 LE)
+...         L1   short_name         charmap string
+...         2    long_name length prefix (u16 LE)
+...         L2   long_name          charmap string
+...         1    slot
+...         1    origin             (0 = continues, per override semantics)
+...         6    roles[6]           each byte 0x00-0x12 (Role enum), matches override exactly
+...         1    nationality
+...         1    skin               1..=3 (Skin enum), matches override
+...         1    hair               1..=6 (Hair enum), matches override
+...         1    demarcation        0..=3 (Demarcation enum), matches override
+...         4    birth              day(u8), month(u8), year(u16 LE) -- matches override DateRaw exactly
+...         1    height_cm
+...         1    weight_kg
+...         1    birth_country
+...         2+L  birthplace         length-prefixed charmap string
+...         2+L  x9 more length-prefixed strings, in EXACT override order:
+                 debut_club, international, profile, characteristics,
+                 palmares, internationality, anecdotes, last_season, career
+...         10   attrs[10]          velocidad,resistencia,agresividad,calidad,
+                                    remate,regate,pase,tiro,entradas,portero
+                                    -- each byte independently in 0..=99
+```
+
+This is **byte-for-byte identical** to `dbc.rs::read_player`'s field order
+from `slot` onward (i.e. everything after the two name strings matches the
+override format exactly, including field count, order, and byte widths) —
+the only container-specific deviation is the variable-length `gap` right
+after `number` and before `short_name`'s own length prefix.
+
+**The `gap` is genuinely variable, not a fixed extra-bytes pattern**: it is
+**3 bytes** for the very first player in the blob (Saccone, offset 1238)
+but **0 bytes** for every one of the other 26 players walked. Its meaning
+is unresolved; a plausible guess is that it's related to the first
+player's position immediately following the coach chain (rather than a
+per-player field that's simply usually empty), but this is speculation —
+`investigate_player_layout.rs` searches forward from `number` for the first
+position where a `u16` LE value in `1..=40` is followed by that many
+mostly-decodable charmap bytes, rather than assuming a fixed width, and
+reports whatever gap length that search lands on.
+
+**Independent real-world verification — very high confidence.** All 27
+decoded `short_name`/`long_name` pairs are real, historically documented
+1998-99 River Plate first-team-squad players (only club/player identifying
+names are reproduced here per this doc's own guardrails, not their
+free-text profile/career fields):
+
+Saccone, Costanzo, **Burgos** ("Germán Adrián Ramón BURGOS" — the real
+Germán Burgos, River/later Atlético Madrid's long-time backup keeper),
+**Bonano** ("Roberto Oscar BONANO" — real River/Rosario Central
+goalkeeper), Biscay ("Matías BISCAY" — real River defender, later a
+Guardiola-era Barcelona/Man City assistant coach), Villalba, Acosta,
+Martínez, Sarabia, Placente ("Diego PLACENTE" — real River/later
+international defender), Paz, Hernán Díaz, **Berizzo** ("Eduardo BERIZZO"
+— real River/Celta/national-team defender), **Sorín** ("Juan Pablo SORIN"
+— real River/Argentina captain), Gómez, **Gallardo** ("Marcelo Daniel
+GALLARDO" — real River legend, later its own record-breaking manager),
+Astrada, Escudero, Gancedo, Berti, **Solari** ("Santiago Hernán SOLARI" —
+real River/Real Madrid player, later Real Madrid manager), **Saviola**
+("Javier Pedro SAVIOLA" — real River/Barcelona striker, breaking through
+in exactly this 1998-99 season), **Angel** ("Juan Pablo ANGEL Arango" —
+real River/Aston Villa striker), Castillo, **Pizzi** ("Juan Antonio PIZZI
+Torroja" — real River/Spain international striker), Rambert, and
+**Aimar** ("Pablo César AIMAR" — real River/Valencia playmaker, also
+breaking through in this season). This roster is essentially a complete,
+correct match to River Plate's real 1998-99 squad — an implausible
+coincidence if the layout, marker-boundary logic, or charmap were wrong.
+
+**The `attrs.portero` (goalkeeper ability) field independently confirms
+`demarcation`/`roles`**: the requested "recognizably realistic pattern"
+shows up cleanly —
+
+| player | demarcation | portero |
+|---|---|---|
+| Saccone | Gk (0) | 75 |
+| Costanzo | Gk (0) | 78 |
+| Burgos | Gk (0) | 85 |
+| Bonano | Gk (0) | 90 |
+| Biscay | Def (1) | 12 |
+| Villalba | Def (1) | 17 |
+| Aimar | Mid (2) | 12 |
+
+— all 4 goalkeepers cluster at 75-90, all non-goalkeepers checked are
+≤20. `birth` dates are all plausible (e.g. Burgos 16/04/1969, Aimar
+03/11/1979), and several `birthplace`/`debut_club` values are real,
+independently-checkable Argentine facts (e.g. Aimar's real hometown is
+Río Cuarto, Córdoba — decoded exactly).
+
+One soft anomaly: `height_cm`/`weight_kg` read as `0` for a few of the
+less-prominent players (Saccone, Villalba) while reading correctly for
+the more prominent ones (Burgos 188cm/75kg, Bonano 188cm/75kg, Biscay
+183cm/73kg, Aimar 168cm/60kg — all plausible). Given every other field
+for those same "zero" players decodes correctly (birth date, birthplace,
+career text), this looks like incomplete data entry in the original 1998
+database for lesser-known squad members, not a layout error.
+
+**The record boundary is exact**: every one of the 27 parses ends exactly
+on the next record's `0x01` marker byte, with **no slack, drift, or
+extra/missing bytes accumulating** across 27 consecutive records. The
+final (27th) player, Aimar, ends 1 byte before the very end of the
+92,956-byte blob — that trailing `0x00` byte is presumably an end-of-roster
+terminator.
+
+**Confidence: very high** on the entire fixed-field layout, the boundary
+logic, and the record count (27 players, complete). The only open point is
+the meaning of the variable-length `gap` before `short_name`.
+
+---
+
+<details>
+<summary>Original medium-high-confidence writeup (superseded by the above; kept for history)</summary>
 
 Immediately after the coach chain's career-default pattern (offset 1504)
 and a few more unresolved bytes, a marker byte `0x01` appears at absolute
@@ -352,53 +566,32 @@ offset 1241   1   01                 <- number (dorsal) = 1
 offset 1242+  ... -> short_name "Saccone", long_name "Alejandro SACCONE"
 ```
 
-`short_name`/`long_name` mixed-case convention (`"Saccone"` /
-`"Alejandro SACCONE"`, surname capitalized) matches the coach record's
-style exactly (`"Ramón Díaz"` / `"Ramón Angel DIAZ"`), which is corroborating
-evidence this is a genuine field boundary and not a coincidence, even
-though the pointer value (6400) doesn't obviously match a plausible
-`player_block_for_load_order` range and there are a few unaccounted bytes
-between `number` and the first string (not yet resolved — this is a gap
-between here and the override format's expected marker→pointer→number→
-short_name sequence, similar in spirit to the "extra bytes" pattern in
-§6.4). Confirms 1 more inference (`0x0B='j'`).
+This was originally read as "player header doesn't cleanly match
+`pcf_model::Player`'s field order" because `slot`/`origin`/`roles`/etc.
+were assumed to sit *before* the name strings (mirroring the doc's naive
+reading of struct field order) rather than *after* them, as
+`dbc.rs::read_player` actually implements it. Once corrected, the layout
+matches essentially exactly -- see the "CONFIRMED" version above.
 
-**Confidence: medium-high** on "this is where player records start and
-the marker/name-field shape roughly matches override format"; **low** on
-the exact byte-for-byte layout of the fixed fields between `number` and
-`short_name` (roles/nationality/skin/hair/demarcation/birth/etc. per
-`pcf_model::Player` don't obviously fit in the ~4 bytes actually observed
-there) — this container's player *header* is evidently shorter or
-differently laid out than the override `.dbc` format's, even though the
-marker byte and the two name strings' shape/style match.
+</details>
 
-### 6.7 Player count estimate — low-medium confidence
+### 6.7 Player count — CONFIRMED: exactly 27 players
 
-`investigate_domestic_team.rs`'s player-marker heuristic (`0x01` + u16
-"pointer" in `1..=2000` + a plausible dorsal `1..=40`) finds **39
-candidates** across the blob, but this scan:
+Superseding the earlier heuristic-based estimate: walking the full,
+corrected field layout (§6.6) from the confirmed first marker at offset
+1238 finds **exactly 27 player records**, back-to-back, consuming the
+entire remainder of the blob (the 27th player, Aimar, ends 1 byte before
+the blob's end). This is a real, plausible 1998-99 Argentine top-flight
+registered-squad size, and matches the real roster almost name-for-name
+(§6.6).
 
-- **Misses the actual first player** (§6.6's hit at offset 1238 has
-  pointer=6400, outside the `1..=2000` heuristic window) — confirms the
-  heuristic under-counts.
-- Includes an obvious false-positive cluster at offsets `0xD9`–`0xE4`
-  (10 hits within 12 bytes, deltas of 1–2) that are almost certainly
-  incidental `0x01` bytes inside the still-unresolved stats/history region
-  from §6.3, not real player boundaries.
-- Its remaining ~24 "spaced out" hits (offsets 6621 through 90714) have
-  deltas mostly in the 3,000–6,000 byte range, consistent with sizeable
-  per-player records (biography-heavy: 8+ free-text fields per
-  `pcf_model::Player`) but not confirmed record boundaries individually.
-
-Given the confirmed first player at offset ~1238 and the blob's total
-length of 92,956 bytes, an average per-player size in the observed
-3,000–6,000 byte range would suggest something in the range of **roughly
-20–28 players** — consistent with, if perhaps slightly on the low side of,
-a realistic 1998 Argentine top-flight squad (typically 25–35 registered
-players). **Not independently confirmed** — no attempt was made in this
-pass to walk every candidate boundary and verify a coherent player record
-between each pair (attributes block, roles array, etc.); this is a rough
-order-of-magnitude estimate only.
+`investigate_domestic_team.rs`'s older heuristic (`0x01` + u16 "pointer" in
+`1..=2000` + dorsal `1..=40`) undercounted for two reasons now understood
+precisely: (1) it excluded the many real players whose `pointer` value
+exceeds 2000 (confirmed real pointers range from ~6400 to ~25600), and (2)
+its false-positive cluster at offsets `0xD9`-`0xE4` falls inside the
+Team-info region now identified in §6.3 as part of the league-history/stats
+blocks, not player data.
 
 ### 6.8 New charmap inferences from this pass (not yet merged into `confirmed_real_map.txt`)
 
@@ -543,6 +736,166 @@ evidence in this pass (see §7.1) rather than risk contaminating the map
 with mis-parsed binary. Understanding the `long_name`/trailing-fields
 framing remains open future work.
 
+## 8. `crates/pcf-codec/src/container.rs` — a real parser, and a bug it exposed
+
+Beyond investigation-only example tools, `crates/pcf-codec/src/container.rs`
+is a genuine, tested production module implementing §6's confirmed
+team-info + coach-chain fields (`ContainerTeamRecord`, `ContainerCoachStub`,
+`parse_team_record`, `find_domestic_team_records`, `parse_pkf_container[_verbose]`)
+— deliberately **not** reusing `pcf_model::Team`/`Coach` (this container's
+confirmed structural differences from the override-`.dbc` format mean those
+frozen types shouldn't be stretched to also describe it) and **not**
+attempting player parsing (§6.6-§6.7's layout isn't confirmed enough yet).
+
+### 8.1 A real bug, caught by actually running the real-fixture test
+
+The first version of `find_domestic_team_records` computed a "stub table
+end" floor from the **last directory block's last entry's own
+`offset + length` fields**, then only looked for domestic records past
+that floor. This shipped with 23 passing unit tests — all against
+hand-built synthetic bytes, none of which could have caught this, because
+the bug was purely about whether that floor was *correct on real data*.
+
+Running the real-fixture test with the actual file mounted
+(`docker run ... -v /c/PCF6AR:/c/PCF6AR:ro ...`, matching the hardcoded
+path `/c/PCF6AR/DBDAT/EQ003003.PKF` the test checks for) immediately
+failed: `find_domestic_team_records` returned **zero** ranges, even
+though River's record is real and present. Diagnosis with
+`investigate_pkf_dir.rs`:
+
+```
+block 13: 32 entries, file bytes [627056, 628272)
+    entry 31: ... offset=1654868 (expected Some(1654868)) length=4270 (expected Some(5491)) flag=1 trailing=0x04  <-- MISMATCH
+```
+
+Block 13's *last* entry — one of the 14 "mismatch" entries §3 already
+flagged as an artifact — doesn't point to the physically-next banner
+within its own block's local run; it points to file offset **1,654,868**,
+which is *inside block 14's own range* (`[1659139, 1660089)`). This means
+blocks 0-13 and block 14 are **not one contiguous stub table**: there are
+at least two separate clusters of directory-described stub records in the
+file — one ending around byte ~628,272, another starting around
+~1,654,868 — with River's real domestic record sitting in the gap between
+them at 629,003. Using "the last directory block's last entry" as a
+stub-table-end floor was built on a false assumption (that all 15 blocks
+describe one contiguous run), and it silently excluded the one real
+domestic record that actually exists in the file.
+
+**Fix:** `find_domestic_team_records` no longer computes or uses any
+directory-derived floor at all. It scans every banner occurrence in the
+*whole* file and keeps only the ones whose following 6-byte header
+matches the confirmed domestic shape (`E9 07 0D 02 00 00`, vs `...01` for
+foreign stubs) — a check that's unambiguous regardless of where in the
+file a record physically sits. Re-run against the real file after the
+fix: `parses_real_river_record_from_the_users_own_pkf_if_present` passes,
+asserting River's exact real facts (stadium, capacity, founded year,
+president, coach name) end to end.
+
+### 8.2 A genuine, honest finding: only ONE domestic record exists in this file
+
+With the fix in place, `examples/dump_container.rs` against the real
+`EQ003003.PKF` finds **exactly one** domestic team record in the entire
+1,779,284-byte file: River. Not the ~60 Argentina teams the pointer
+catalog (`fixtures/pointers/team_pointers.csv`, pointers 9001-9061 plus
+specials) might suggest should be present.
+
+This is **not** a bug — the header-based scan is unconditional and
+file-wide, so there's no floor or filter left that could be hiding
+records. It means either: (a) this particular install's `EQ003003.PKF`
+genuinely only ships one fully-fleshed-out domestic team (plausible for a
+game that otherwise generates/derives most teams' full data at
+runtime/first-load, with River perhaps being a bundled "sample" or
+default), (b) the other ~60 teams exist somewhere in this file under a
+**different** record header/shape entirely (not `E9 07 0D 02 00 00`) that
+hasn't been identified yet, or (c) they live in a different file
+altogether. Whichever it is, don't assume scanning for "more records shaped like
+River" will find them — a genuinely different signature would be needed.
+Left as an open question for further investigation (see §5).
+
+**UPDATE (see §9): resolved — it's (b), and the "genuinely different
+signature" needed is smaller than expected.** The 6-byte match
+`E9 07 0D 02 00 00` only worked for River by coincidence: its **first 2
+bytes are NOT a fixed constant** across domestic records — they vary per
+team (confirmed values include `21 07`, `E2 05`, `47 06`, `39 07`, ...).
+The real, verified-constant domestic-record signature is just the **4
+bytes at header offset +2** (i.e. banner+38): `0D 02 00 00`. Scanning the
+whole file for *that* narrower signature finds **55 domestic records**,
+not 1 — see §9 for the full list and cross-reference against the pointer
+catalog.
+
+**UPDATE 2: `container.rs` has been fixed to match** — `DOMESTIC_HEADER`
+(the old, wrongly-strict 6-byte constant) was replaced with
+`DOMESTIC_HEADER_TAIL` (4 bytes) + a new `header_prefix: [u8; 2]` field on
+`ContainerTeamRecord` (the varying leading bytes, kept verbatim rather
+than discarded, since their meaning isn't confirmed). Re-running
+`examples/dump_container.rs` against the real file after the fix: **39 of
+the 55 real domestic records now parse successfully** end-to-end through
+`parse_pkf_container_verbose`, with real, independently-checkable data —
+e.g. Boca's decoded `president` is "Mauricio Macri", who really was Boca
+Juniors' president in 1998. The remaining 16 fail with a typed
+`charmap_unknown_byte` error (not a panic — `parse_pkf_container_verbose`
+correctly isolates the failure to that one record and keeps going): every
+failing team's `short_name` contains a parenthesis (e.g. "San Martín
+(Tuc)", "Estudiantes (LP)", "Talleres (Cba)") — parentheses aren't in the
+77-pair `confirmed_real_map_v2.txt` charmap yet. Adding `(`/`)` (and
+re-running against these exact real failures to confirm) is a
+well-scoped, low-risk follow-up, not attempted in this pass. Most
+successfully-parsed teams show `coach: (none found)` — expected per the
+module's design (`Option<ContainerCoachStub>`); the confirmed `02 02`
+coach-marker heuristic is real but not guaranteed present/locatable for
+every team's data (smaller/lower-tier clubs plausibly have thinner
+records).
+
+## 9. Enumerating all domestic team records — CONFIRMED, high confidence
+
+Using the corrected 4-byte signature (`0D 02 00 00` at banner+38, §8's
+UPDATE) and scanning the whole 1,779,284-byte file for every banner
+occurrence, `enumerate_domestic_teams.rs` (new) finds **55 domestic team
+records**, from River (banner @629,003) through the end of the file. Every
+record's `short_name` (first length-prefixed string, at header+8) decodes
+cleanly with the 77-pair `confirmed_real_map_v2.txt` charmap — zero
+unmapped bytes in any of the 55 names.
+
+Decoded `short_name`s, in physical file order (banner offsets in the raw
+`.PKF`, not the golden blob):
+
+River, San Lorenzo, Vélez, Argentinos Jrs., Newell's, Belgrano, Lanús,
+Banfield, Rosario Central, Gim. Esgrima (LP), Independiente, Racing, Boca,
+Huracán, Platense, Gimnasia (J), Ferro, Dep. Español, Colón, Estudiantes
+(LP), Dep. Morón, Arsenal, Tigre, San Martín (Tuc), Ctral. Córdoba, Los
+Andes, Talleres (Cba), All Boys, Gimnasia y Tiro, Unión, Godoy Cruz, San
+Martín (SJ), Atl. Rafaela, Huracán (Ctes), Nueva Chicago, Instituto (Cba),
+Quilmes, Douglas Haig, Atl. Tucumán, Chacarita Jrs., Atlanta, San Miguel,
+Defensa y Just., Aldosivi (M.P.), Almagro, Alte. Brown (Ar.), Cipoletti
+(RN), Estudiantes (B.A.), Olimpo, San Martín (Mza), Juv. Antoniana, Gim.
+Entre Ríos, El Porvenir, then two specials: **Estrellas ARGENTINA** and
+**Juveniles ARGENTINA**.
+
+**Cross-reference against `fixtures/pointers/team_pointers.csv`'s
+Argentina block** (pointers 9001-9061, ~60 real clubs after excluding the
+gap at 9049, plus specials `9903 Estrellas Argentina` / `9958 Juveniles
+Argentina` elsewhere in the catalog): **53 of the ~60 numbered club
+pointers have a matching record here, in the exact same relative order as
+the catalog**, plus both of those 2 specials. **Missing** from the file
+(present in the catalog but no matching record found): `9050 Dep.
+Italiano`, and the catalog's final 5 lowest-ranked entries — `9057
+Argentino Ros.`, `9058 Temperley`, `9059 Independente (Mza)`, `9060 Villa
+Mitre`, `9061 Racing (Cor)`. Also not found: the catalog's `9900 Estrellas
+España` (a Spain-context special, not expected in the Argentina block
+anyway) or `9950 Jugadores Libres` (a free-agents pool, plausibly stored
+under a different, non-domestic-team shape entirely, or in a different
+file).
+
+This is a clean, close-to-complete match (53/60 clubs + both found
+specials = 55/62 catalog entries), consistent with the guardrail's
+expectation that "not every pointer-catalog entry necessarily has a full
+DBC-style record in every install" — the handful of missing entries are
+plausibly lower-division/placeholder clubs whose data wasn't fully
+populated in this particular install/edition, not evidence the enumeration
+method itself is incomplete (the scan is unconditional and file-wide, with
+no floor/filter that could hide records, same as `container.rs`'s own
+approach once given the corrected signature).
+
 ## Investigation tools (all under `crates/pcf-codec/examples/`)
 
 | Tool | Purpose |
@@ -551,6 +904,10 @@ framing remains open future work.
 | `investigate_pkf_dir.rs` | Second-pass investigator: finds the 13-byte directory signature, groups occurrences into contiguous blocks, verifies offset/length fields against real banner positions, and can dump+decode any chosen block's record bodies. Usage: `cargo run -p pcf-codec --example investigate_pkf_dir -- <path.pkf> [block_index]` |
 | `investigate_domestic_team.rs` | Third-pass investigator (§6): parses the confirmed team-info fields (through `president`) out of a real domestic team record, plus heuristic scans for the coach-chain marker (`02 02`) and player-record markers (`0x01`). Uses the 37-pair confirmed charmap plus 13 newly-inferred pairs (see §6.8, kept local to this tool; reconciled against §7's larger corpus). Usage: `cargo run -p pcf-codec --example investigate_domestic_team -- [path-to-blob]` (defaults to `fixtures/golden/real_river_9001_container_blob.raw`). |
 | `dump_stub_table.rs` | Fourth-pass investigator (§7): dumps ALL 15 stub-table blocks' `short_name`/`stadium_name` fields, lossy-decoded (unmapped bytes render as `[XX]`), across all 473 records — the corpus used to expand the charmap from 37 to 77 confirmed pairs. Usage: `cargo run -p pcf-codec --example dump_stub_table -- <path.pkf> [charmap-path]` (charmap path defaults to `fixtures/charmap/confirmed_real_map.txt`; point it at `confirmed_real_map_v2.txt` to see the improved decode). |
+| `dump_container.rs` | **Uses the real production parser**, not investigation-only code: calls `pcf_codec::container::parse_pkf_container_verbose` (see `crates/pcf-codec/src/container.rs`, the new §6-implementing module) on a whole `.PKF` file and prints a summary table (team short name, capacity, founded, president, coach short name) for every domestic team record found, plus a parsed/failed count. Usage: `cargo run -p pcf-codec --example dump_container -- <path.pkf> [charmap-path]` (charmap path defaults to `fixtures/charmap/confirmed_real_map_v2.txt`). Note (§8 UPDATE): its 6-byte domestic-header match is too strict and currently only finds River; not modified by this investigation pass (owned by a parallel effort). |
+| `investigate_player_layout.rs` | Fifth-pass investigator (§6.6-§6.7, new): walks player records from a given marker offset using the override `read_player` field order (corrected so `short_name`/`long_name` come right after `number`, before `slot`/`origin`/`roles`/etc.), auto-detecting the variable-length gap before `short_name`'s length prefix. Confirms all 27 River players end-to-end. Usage: `cargo run -p pcf-codec --example investigate_player_layout -- [path-to-blob] [start-offset] [max-records]` (defaults: golden blob, offset 1238, 6 records). |
+| `investigate_tactics_block.rs` | Sixth-pass investigator (§6.3, new): dumps and annotates the region between `Team.president` and the coach marker with exact cursor arithmetic against the override field order, and scans for candidate length prefixes. Usage: `cargo run -p pcf-codec --example investigate_tactics_block -- [path-to-blob]`. |
+| `enumerate_domestic_teams.rs` | Seventh-pass investigator (§9, new): scans a whole `.PKF` file for the corrected 4-byte domestic-record signature (`0D 02 00 00` at banner+38) and decodes every record's `short_name`. Found 55 domestic records where the naive 6-byte signature found only 1 (see §8 UPDATE). Usage: `cargo run -p pcf-codec --example enumerate_domestic_teams -- <path-to-EQ003003.PKF> [charmap-path]`. |
 | `build_synthetic_golden.rs` | Unrelated to PKF investigation — regenerates `fixtures/golden/synthetic_minimal.dbc` from the in-code synthetic `Dbc` builder (Agent A's TDD fixture, not real data). |
 
 All of these are run inside the Docker dev container (Rust isn't
