@@ -32,6 +32,8 @@ export interface Team {
   affiliate2: number;
   leagueHistory: LeagueResult[]; // length 10
   stats: TeamStats;
+  /** The "jornada positions" blob (Appendix A), preserved byte-for-byte. */
+  jornada: number[];
   palmares: number[];
 }
 
@@ -102,6 +104,15 @@ export interface Player {
   weightKg: number;
   birthCountry: number;
   birthplace: string;
+  debutClub: string;
+  international: string;
+  profile: string;
+  characteristics: string;
+  palmares: string;
+  internationality: string;
+  anecdotes: string;
+  lastSeason: string;
+  career: string;
   attrs: Attributes;
 }
 

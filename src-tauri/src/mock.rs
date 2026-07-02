@@ -64,6 +64,7 @@ pub fn dbc() -> Dbc {
                 champion: 0,
                 runner_up: 0,
             },
+            jornada: vec![0; 92],
             palmares: vec![0; 34],
         },
         tactics: Tactics {
@@ -77,7 +78,9 @@ pub fn dbc() -> Dbc {
             formation_blob: vec![],
         },
         coach: Some(Coach {
-            pointer: 1,
+            // Coach pointers are a separate namespace from the 1..=50
+            // player block (PLAN.md §4.2) — kept clear of player pointers.
+            pointer: 1001,
             short_name: "BIANCHI".into(),
             long_name: "CARLOS BIANCHI".into(),
             profile: "x".into(),
@@ -118,6 +121,15 @@ pub fn dbc() -> Dbc {
             weight_kg: 78,
             birth_country: 1,
             birthplace: "AVELLANEDA".into(),
+            debut_club: "x".into(),
+            international: "x".into(),
+            profile: "x".into(),
+            characteristics: "x".into(),
+            palmares: "x".into(),
+            internationality: "x".into(),
+            anecdotes: "x".into(),
+            last_season: "x".into(),
+            career: "ND,ND,ND,ND,ND==".into(),
             attrs: Attributes {
                 velocidad: 75,
                 resistencia: 70,
@@ -170,6 +182,7 @@ pub fn blank_dbc() -> Dbc {
                 champion: 0,
                 runner_up: 0,
             },
+            jornada: vec![0; 92],
             palmares: vec![0; 34],
         },
         tactics: Tactics {

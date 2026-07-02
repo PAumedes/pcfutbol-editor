@@ -2142,7 +2142,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-codec"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "binrw",
  "pcf-model",
@@ -2153,7 +2153,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-editor"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "pcf-model",
@@ -2166,7 +2166,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-fixture-tests"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "pcf-codec",
  "pcf-model",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-images"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "image",
  "pcf-model",
@@ -2184,7 +2184,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-manager"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "pcf-model",
  "serde",
@@ -2193,7 +2193,7 @@ dependencies = [
 
 [[package]]
 name = "pcf-model"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",

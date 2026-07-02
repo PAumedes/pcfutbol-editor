@@ -58,6 +58,11 @@ pub struct Team {
     /// Last 10 seasons.
     pub league_history: [LeagueResult; 10],
     pub stats: TeamStats,
+    /// The "jornada positions" blob (Appendix A). Fixed-length (92 bytes in
+    /// the confirmed layout); the editor always writes zeros here, but the
+    /// bytes are preserved on read so round-tripping an arbitrary real DBC
+    /// doesn't silently drop whatever it holds.
+    pub jornada: Vec<u8>,
     /// Fixed-length blob; length is version-dependent.
     pub palmares: Vec<u8>,
 }
@@ -183,6 +188,18 @@ pub struct Player {
     pub weight_kg: u8,
     pub birth_country: u8,
     pub birthplace: String,
+    // The 8 free-text fields Appendix A documents between birthplace and
+    // attributes, plus career — editor default is "x" for each of these
+    // 8, and "ND,ND,ND,ND,ND==" for career (mirrors Coach's defaults).
+    pub debut_club: String,
+    pub international: String,
+    pub profile: String,
+    pub characteristics: String,
+    pub palmares: String,
+    pub internationality: String,
+    pub anecdotes: String,
+    pub last_season: String,
+    pub career: String,
     pub attrs: Attributes,
 }
 

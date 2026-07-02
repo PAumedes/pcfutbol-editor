@@ -10,7 +10,9 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+# contract-change: pcf-model gained Team::jornada and 9 Player fields
+# (Appendix A free-text + career) previously missing from the M0 contract.
+version = "0.0.2"
 edition = "2021"
 license = "MIT"
 

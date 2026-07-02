@@ -14,23 +14,13 @@
 //! user/community-supplied at runtime, not baked into the codec — so it
 //! must be threaded through explicitly rather than assumed global state.
 //!
-//! ## Known round-trip gaps (flagged, not silently papered over)
+//! ## Round-trip status (contract-change: 0.0.2)
 //!
-//! Several fields documented in Appendix A have **no home in the frozen
-//! `pcf_model` types** (they're not in the M0 contract): the team's
-//! "jornada positions" blob (92 bytes, editor always zeros it) and, per
-//! player, eight free-text fields (debut club, international, profile,
-//! characteristics, palmarés, internationality, anecdotes, last season)
-//! plus the free-text career field. This codec reads and discards those
-//! bytes, then re-emits the documented *editor defaults*
-//! (`"x"` / `"ND,ND,ND,ND,ND=="` / zeros) on write. That means
-//! `write(read(bytes)) == bytes` only holds for files whose original bytes
-//! already match those defaults — true for anything the editor itself
-//! produced, but **not guaranteed for arbitrary real-game DBCs** whose
-//! unmodeled fields hold other data. This is a contract gap, not a codec
-//! bug: closing it requires a `pcf-model` change (out of Agent A's owned
-//! scope) to add fields for that free text, or an explicit decision that
-//! v1 never needs to preserve it byte-for-byte.
+//! `pcf_model` 0.0.2 added `Team::jornada` and 9 `Player` fields (the
+//! Appendix A free-text fields plus career) that 0.0.1 had no home for.
+//! This codec now reads and preserves them instead of discarding them, so
+//! `write(read(bytes)) == bytes` holds for arbitrary real-game DBCs, not
+//! just editor-generated ones with default text in those fields.
 use binrw::io::Cursor;
 use binrw::{BinRead, BinWrite};
 use pcf_model::{
@@ -51,12 +41,15 @@ const COACH_MARKER: u8 = 0x02;
 const COACH_WAS_PLAYER_MARKER: u8 = 0x03;
 const PLAYER_MARKER: u8 = 0x01;
 
+/// `Coach::career_player` default when `was_player` is false and the field
+/// is absent from the byte stream (nothing to read).
+const COACH_CAREER_PLAYER_DEFAULT: &str = "x";
+
 /// Number of `(position, division)` pairs in the last-10-seasons table.
 const LEAGUE_HISTORY_SEASONS: usize = 10;
 
-/// Length in bytes of the "jornada positions" blob the editor always
-/// zeroes. Not modeled in `pcf_model::Team` (no field for it in the M0
-/// contract) — read and discarded, always re-written as zeros.
+/// Length in bytes of the "jornada positions" blob (`Team::jornada`). The
+/// editor always writes zeros here, but real files may not.
 /// TODO(A): confirm against a real Apertura fixture.
 const JORNADA_LEN: usize = 92;
 
@@ -74,15 +67,6 @@ const PALMARES_LEN: usize = 34;
 /// switched or made conditional on `DbcHeader::file_version` once a real
 /// fixture is available. TODO(A): confirm against a real Apertura fixture.
 const STANDING_CAPACITY_PRESENT: bool = true;
-
-/// The 8 per-player free-text fields Appendix A documents between
-/// birthplace and the career field, none of which have a home in the
-/// frozen `pcf_model::Player` (see module docs). Read and discarded;
-/// always re-written as this default.
-const PLAYER_TEXT_DEFAULT: &str = "x";
-const PLAYER_TEXT_FIELD_COUNT: usize = 8;
-/// Per-player and per-coach career field default.
-const CAREER_DEFAULT: &str = "ND,ND,ND,ND,ND==";
 
 /// Extension trait giving `Dbc::read` / `dbc.write` call syntax on the
 /// frozen, foreign `pcf_model::Dbc` type. See module docs for why `read`
@@ -206,9 +190,7 @@ fn read_team(r: &mut Reader, charmap: &CharMap) -> Result<Team, PcfError> {
     let league_history = read_league_history(r)?;
     let stats = read_team_stats(r)?;
 
-    // Jornada positions blob: not modeled (see module docs) — discard.
-    r.take(JORNADA_LEN)?;
-
+    let jornada = r.take(JORNADA_LEN)?.to_vec();
     let palmares = r.take(PALMARES_LEN)?.to_vec();
 
     Ok(Team {
@@ -226,6 +208,7 @@ fn read_team(r: &mut Reader, charmap: &CharMap) -> Result<Team, PcfError> {
         affiliate2,
         league_history,
         stats,
+        jornada,
         palmares,
     })
 }
@@ -258,7 +241,16 @@ fn write_team(w: &mut Writer, charmap: &CharMap, team: &Team) -> Result<(), PcfE
     write_league_history(w, &team.league_history);
     write_team_stats(w, &team.stats)?;
 
-    w.fixed(&[0u8; JORNADA_LEN]);
+    if team.jornada.len() != JORNADA_LEN {
+        return Err(PcfError::new(
+            "dbc_jornada_length_mismatch",
+            format!(
+                "jornada blob must be exactly {JORNADA_LEN} bytes, got {}",
+                team.jornada.len()
+            ),
+        ));
+    }
+    w.fixed(&team.jornada);
 
     if team.palmares.len() != PALMARES_LEN {
         return Err(PcfError::new(
@@ -364,7 +356,7 @@ fn read_coach(r: &mut Reader, charmap: &CharMap) -> Result<Coach, PcfError> {
         r.u8()?;
         (true, r.string(charmap)?)
     } else {
-        (false, String::from(PLAYER_TEXT_DEFAULT))
+        (false, String::from(COACH_CAREER_PLAYER_DEFAULT))
     };
 
     let declarations = r.string(charmap)?;
@@ -443,12 +435,15 @@ fn read_player(r: &mut Reader, charmap: &CharMap) -> Result<Player, PcfError> {
     let birth_country = r.u8()?;
     let birthplace = r.string(charmap)?;
 
-    // 8 free-text fields with no home in the frozen model — discard.
-    for _ in 0..PLAYER_TEXT_FIELD_COUNT {
-        r.string(charmap)?;
-    }
-    // Career field — same story.
-    r.string(charmap)?;
+    let debut_club = r.string(charmap)?;
+    let international = r.string(charmap)?;
+    let profile = r.string(charmap)?;
+    let characteristics = r.string(charmap)?;
+    let palmares = r.string(charmap)?;
+    let internationality = r.string(charmap)?;
+    let anecdotes = r.string(charmap)?;
+    let last_season = r.string(charmap)?;
+    let career = r.string(charmap)?;
 
     let attr_bytes = r.take(10)?;
     let attrs: Attributes = AttributesRaw::read(&mut Cursor::new(attr_bytes))
@@ -472,6 +467,15 @@ fn read_player(r: &mut Reader, charmap: &CharMap) -> Result<Player, PcfError> {
         weight_kg,
         birth_country,
         birthplace,
+        debut_club,
+        international,
+        profile,
+        characteristics,
+        palmares,
+        internationality,
+        anecdotes,
+        last_season,
+        career,
         attrs,
     })
 }
@@ -502,10 +506,15 @@ fn write_player(w: &mut Writer, charmap: &CharMap, player: &Player) -> Result<()
     w.u8(player.birth_country);
     w.string(charmap, &player.birthplace)?;
 
-    for _ in 0..PLAYER_TEXT_FIELD_COUNT {
-        w.string(charmap, PLAYER_TEXT_DEFAULT)?;
-    }
-    w.string(charmap, CAREER_DEFAULT)?;
+    w.string(charmap, &player.debut_club)?;
+    w.string(charmap, &player.international)?;
+    w.string(charmap, &player.profile)?;
+    w.string(charmap, &player.characteristics)?;
+    w.string(charmap, &player.palmares)?;
+    w.string(charmap, &player.internationality)?;
+    w.string(charmap, &player.anecdotes)?;
+    w.string(charmap, &player.last_season)?;
+    w.string(charmap, &player.career)?;
 
     let attr_raw: AttributesRaw = player.attrs.into();
     w.fixed(&binwrite_to_vec(&attr_raw)?);

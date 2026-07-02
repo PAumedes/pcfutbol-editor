@@ -37,6 +37,7 @@ export const mockDbc: Dbc = {
       champion: 0,
       runnerUp: 0,
     },
+    jornada: new Array(92).fill(0),
     palmares: new Array(34).fill(0),
   },
   tactics: {
@@ -84,6 +85,15 @@ export const mockDbc: Dbc = {
       weightKg: 78,
       birthCountry: 1,
       birthplace: "AVELLANEDA",
+      debutClub: "x",
+      international: "x",
+      profile: "x",
+      characteristics: "x",
+      palmares: "x",
+      internationality: "x",
+      anecdotes: "x",
+      lastSeason: "x",
+      career: "ND,ND,ND,ND,ND==",
       attrs: {
         velocidad: 75,
         resistencia: 70,
