@@ -8,3 +8,9 @@ license.workspace = true
 pcf-model = { path = "../pcf-model" }
 serde.workspace = true
 thiserror.workspace = true
+# Only used for the `RgbImage` pixel-buffer container on the import side
+# (truecolor source images handed to us by the UI/import flow). We do our
+# own 8-bit indexed BMP encode/decode and palette repair below -- the
+# `image` crate does not support writing 256-color palette BMPs the way
+# the game needs, so no codec features are required.
+image = { version = "0.24", default-features = false }

@@ -1,3 +1,6 @@
+// Prevents an additional console window on Windows in release builds.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 fn main() {
-    println!("pcf-editor stub — Agent D replaces this with the real Tauri app entrypoint.");
+    pcf_editor_lib::run();
 }

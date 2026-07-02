@@ -1,0 +1,17 @@
+@import "./lib/design/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--pcf-color-bg);
+  color: var(--pcf-color-text-inverse);
+  font-family: var(--pcf-font-body);
+  font-size: var(--pcf-font-size-base);
+}
+
+#app {
+  min-height: 100svh;
+}

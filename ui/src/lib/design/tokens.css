@@ -1,0 +1,80 @@
+/*
+ * TODO(E): re-derive palette/typography from user-supplied screenshots of
+ * the real game. Nobody has supplied screenshots of PC Apertura 98/99 yet,
+ * so everything below is a PLAUSIBLE placeholder for a late-90s
+ * sports-management-game look (chunky beveled panels, a bitmap-ish font,
+ * a saturated but limited palette) — NOT a faithful skin. Re-theming from
+ * real screenshots should be a data change here, not a component rewrite.
+ */
+
+:root {
+  /* ---- Palette --------------------------------------------------- */
+  /* Base surface: deep navy/teal, evocative of old DOS/Win95 sports sims */
+  --pcf-color-bg: #0b1f3a;
+  --pcf-color-bg-alt: #102a4c;
+
+  /* Beveled panel body + its light/dark bevel edges (classic outset look) */
+  --pcf-color-panel: #c6cfe0;
+  --pcf-color-panel-light: #f3f6fb;
+  --pcf-color-panel-dark: #6b7593;
+  --pcf-color-panel-darker: #3c4560;
+
+  /* Sunken variant (for input-like / recessed areas) */
+  --pcf-color-sunken: #aab4cc;
+
+  /* Accents: a saturated gold + a saturated red, limited to two accents */
+  --pcf-color-accent: #e0a527;
+  --pcf-color-accent-strong: #b97e0f;
+  --pcf-color-danger: #c23b3b;
+  --pcf-color-danger-strong: #8f2626;
+  --pcf-color-success: #3f8f52;
+
+  /* Text */
+  --pcf-color-text: #142033;
+  --pcf-color-text-dim: #4a5670;
+  --pcf-color-text-inverse: #f3f6fb;
+
+  /* Attribute-bar fill thresholds (0-99 scale) */
+  --pcf-color-attr-low: #c23b3b;
+  --pcf-color-attr-mid: #e0a527;
+  --pcf-color-attr-high: #3f8f52;
+
+  /* ---- Typography -------------------------------------------------- */
+  /* Bitmap-style stand-in: a narrow, blocky monospace stack. Swap for a
+     real bitmap/pixel webfont once we have the game's actual typeface. */
+  --pcf-font-heading: "Lucida Console", "Courier New", ui-monospace, monospace;
+  --pcf-font-body: "Tahoma", "Verdana", ui-sans-serif, sans-serif;
+
+  /* Exactly two weights, per the design checklist. */
+  --pcf-font-weight-regular: 400;
+  --pcf-font-weight-bold: 700;
+
+  --pcf-font-size-sm: 0.75rem;
+  --pcf-font-size-base: 0.875rem;
+  --pcf-font-size-lg: 1.125rem;
+  --pcf-letter-spacing-heading: 0.03em;
+
+  /* ---- Geometry ----------------------------------------------------- */
+  --pcf-radius: 2px; /* chunky right-angled bevels, not rounded */
+  --pcf-bevel-width: 2px;
+  --pcf-spacing-xs: 4px;
+  --pcf-spacing-sm: 8px;
+  --pcf-spacing-md: 12px;
+  --pcf-spacing-lg: 20px;
+
+  /* ---- Motion --------------------------------------------------------
+     Every animation must stay <= 250ms and be skippable; see
+     lib/design/motion.ts for the JS-side helper that respects
+     prefers-reduced-motion. */
+  --pcf-motion-fast: 120ms;
+  --pcf-motion-base: 200ms;
+  --pcf-motion-max: 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --pcf-motion-fast: 0ms;
+    --pcf-motion-base: 0ms;
+    --pcf-motion-max: 0ms;
+  }
+}

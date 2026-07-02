@@ -6,6 +6,7 @@ members = [
     "crates/pcf-images",
     "crates/pcf-manager",
     "src-tauri",
+    "tests",
 ]
 
 [workspace.package]
@@ -19,3 +20,13 @@ serde_json = "1"
 thiserror = "1"
 anyhow = "1"
 binrw = "0.13"
+
+# Portable single-exe target is ~5-15MB (PLAN.md §1). These apply to every
+# release build in the workspace, including `cargo tauri build`'s Rust side
+# (see PACKAGING.md for the full checklist, e.g. frontend trimming and
+# tauri.conf.json bundle settings, which this alone doesn't cover).
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

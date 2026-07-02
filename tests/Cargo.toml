@@ -1,0 +1,21 @@
+[package]
+name = "pcf-fixture-tests"
+description = "Cross-crate integration harness: round-trip gate over fixtures/golden/*.dbc (PLAN.md §6/§7). Owned by Agent G."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+pcf-codec = { path = "../crates/pcf-codec" }
+pcf-model = { path = "../crates/pcf-model" }
+
+[features]
+# `pcf-codec` now exposes `DbcCodec::read`/`write` (Agent A landed it after
+# this crate was first scaffolded), so the real gate is on by default. Keep
+# the feature itself around as an escape hatch: if a future contract change
+# in pcf-codec breaks compilation again mid-flight, drop `codec-ready` from
+# `default` here (one line) rather than letting it block every other
+# crate's `cargo test --workspace` run — see tests/tests/round_trip.rs.
+default = ["codec-ready"]
+codec-ready = []

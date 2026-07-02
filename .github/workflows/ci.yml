@@ -1,0 +1,97 @@
+# CI for the PC Apertura 98/99 editor workspace (PLAN.md §6/§7, Agent G).
+#
+# No GitHub remote is connected yet — this file is authored ahead of time so
+# it's ready the moment the repo is pushed. It mirrors Dockerfile.dev's
+# toolchain (Rust stable + clippy/rustfmt + Node 22 + the native libs Tauri
+# needs on Linux) rather than running inside that image directly, so it
+# doesn't depend on a container registry existing yet either.
+#
+# Gate: fmt --check, clippy -D warnings, test --workspace (which includes
+# the fixtures round-trip gate in tests/tests/round_trip.rs — see
+# fixtures/README.md for why that's a graceful no-op until real golden DBCs
+# are supplied, not a free pass forever).
+#
+# The round-trip assertion itself is behind the pcf-fixture-tests
+# `codec-ready` feature (off by default) until Agent A's pcf-codec exposes
+# Dbc::read/Dbc::write — see tests/tests/round_trip.rs. The extra step below
+# runs it best-effort so CI starts exercising the real gate the moment
+# that feature is flipped on, without needing a CI edit at that point.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: fmt / clippy / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native deps (Tauri on Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libssl-dev libgtk-3-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev file
+
+      - name: Install Rust stable (+ fmt, clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry/target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+      - name: cargo test (fixtures round-trip, codec-ready)
+        # Not yet the required gate: only meaningful once pcf-codec lands
+        # Dbc::read/Dbc::write. `|| true` keeps this informational until
+        # then; drop it once `codec-ready` is in tests/Cargo.toml's default
+        # feature set, at which point the step above already covers it.
+        run: cargo test -p pcf-fixture-tests --features codec-ready || true
+
+  ui:
+    name: ui lint / build
+    runs-on: ubuntu-latest
+    # Best-effort until Agent E/F land a package.json; don't block the
+    # required Rust gate on a frontend that may not exist yet.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install & build
+        working-directory: ui
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+            npm run build --if-present
+          else
+            echo "ui/package.json not present yet — skipping."
+          fi

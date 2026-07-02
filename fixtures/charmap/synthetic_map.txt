@@ -1,0 +1,77 @@
+# SYNTHETIC / PLACEHOLDER charmap — see README.md in this directory.
+# Only the 11 mappings marked "VERIFIED" below come from PLAN.md Appendix A
+# (the "Real Madrid C.F." encoding proof). Everything else is invented by
+# Agent A purely to exercise round-trip tests and is almost certainly wrong
+# for the real game. Do not ship this file; replace with the real map.txt.
+
+# --- VERIFIED (Appendix A "Real Madrid C.F." proof) ---
+33	R
+04	e
+00	a
+0D	l
+41	\s
+2C	M
+05	d
+13	r
+08	i
+4F	.
+27	F
+22	C
+
+# --- INVENTED (placeholder only, arbitrary but collision-free) ---
+01	b
+02	c
+03	f
+06	g
+07	h
+09	j
+0A	k
+0B	m
+0C	n
+0E	o
+0F	p
+10	q
+11	s
+12	t
+14	u
+15	v
+16	w
+17	x
+18	y
+19	z
+1A	A
+1B	B
+1C	J
+1D	D
+1E	E
+1F	G
+20	H
+21	I
+23	K
+24	L
+25	N
+26	O
+28	P
+29	Q
+2A	S
+2B	T
+2D	U
+2E	V
+2F	W
+30	X
+31	Y
+32	Z
+34	0
+35	1
+36	2
+37	3
+38	4
+39	5
+3A	6
+3B	7
+3C	8
+3D	9
+3E	,
+3F	-
+40	'
+42	=

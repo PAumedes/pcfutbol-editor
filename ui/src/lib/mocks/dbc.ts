@@ -50,7 +50,10 @@ export const mockDbc: Dbc = {
     formationBlob: [],
   },
   coach: {
-    pointer: 1,
+    // Coach pointers are a separate namespace from the 1..=50 player block
+    // (PLAN.md §4.2) — keep this clear of player pointers so it doesn't
+    // trip the pointer-collision validator on this shared mock fixture.
+    pointer: 1001,
     shortName: "BIANCHI",
     longName: "CARLOS BIANCHI",
     profile: "x",
