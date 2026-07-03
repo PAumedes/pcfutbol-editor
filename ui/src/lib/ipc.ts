@@ -113,6 +113,19 @@ export async function detectGameDir(): Promise<string | null> {
   return mockGameDir;
 }
 
+/**
+ * Opens a native "choose a folder" dialog (via `@tauri-apps/plugin-dialog`,
+ * capability-granted in `src-tauri/capabilities/default.json`). Returns
+ * `null` if the user cancels, or in a plain-browser dev session where no
+ * native dialog exists.
+ */
+export async function pickFolder(): Promise<string | null> {
+  if (!hasTauriBackend()) return null;
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const result = await open({ directory: true, multiple: false });
+  return typeof result === "string" ? result : null;
+}
+
 export async function patchManager(path: string, opts: ManagerPatch): Promise<PatchReport> {
   if (hasTauriBackend()) {
     return invokeTauri<PatchReport>("patch_manager", { path, opts });

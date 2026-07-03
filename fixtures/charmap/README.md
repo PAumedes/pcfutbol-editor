@@ -36,7 +36,7 @@ provenance is different and each documents its own citation trail:
   worked examples like "Real Madrid C.F.", "Santiago Bernabéu", "TEKA",
   "ADIDAS", "Hiddink". See its own header comment for the full citation
   list.
-- **`confirmed_real_map_v2.txt` — 77 pairs (superset of the 37 above,
+- **`confirmed_real_map_v2.txt` — 90 pairs (superset of the 37 above,
   re-verified).** Source: `fixtures/PKF_FORMAT.md` §7 — decoding all 473
   records of the real `EQ003003.PKF`'s "foreign reference clubs" stub
   table (`crates/pcf-codec/examples/dump_stub_table.rs`) and
@@ -50,9 +50,21 @@ provenance is different and each documents its own citation trail:
   independent, cross-country citations). One byte (`0x50`) **corrects** a
   provisional single-fact guess made by an earlier, unrelated domestic-team
   investigation (see `PKF_FORMAT.md` §7.3) — a genuine example of this
-  bigger corpus catching an earlier low-confidence inference. One byte
-  (`0xD5`) was deliberately left **unresolved** (single ambiguous
-  occurrence — see §7.4) rather than guessed.
+  bigger corpus catching an earlier low-confidence inference.
+  **Third pass (see `PKF_FORMAT.md`'s "EDITOR-PM9798 cross-reference"
+  section):** 8 more pairs added by cross-referencing a large **external**
+  corpus of real `EQ97####.DBC` override files from the community
+  "EDITOR-PM9798" tool (PM97/PM98/PCPREMIER60 — earlier/related entries in
+  the same Dinamic Multimedia engine family, confirmed same banner/string
+  encoding, but NOT this project's own game data and not redistributed
+  here) — `0x56` (`'7'`, resolving the previously-open San Martín (SJ)
+  blocker), `0x47` (`'&'`), `0x39` (uppercase `X`), `0x83` (`â`), `0xA6`
+  (uppercase `Ç`), `0xA8` (uppercase `É`), `0xB0` (uppercase `Ñ`), `0xBD`
+  (uppercase `Ü`). Two bytes remain deliberately **unresolved**: `0xD5`
+  (single ambiguous occurrence in the original corpus — see §7.4 — and the
+  third pass found a *second*, contradictory single-citation guess for the
+  same byte, reinforcing rather than resolving the ambiguity) and none
+  else — see the file's own end-of-file note for the full writeup.
 
 **`confirmed_real_map_v2.txt` is the more complete and more heavily
 cross-checked of the two real files** (77 pairs vs. 37, most confirmed

@@ -22,6 +22,7 @@ use commands::{
 /// packaged frontend/bundle.
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             load_pkf,
             load_pkf_team,

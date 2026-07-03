@@ -25,8 +25,8 @@ real club names, which are factual and already public in
 | Directory format | **Decoded and verified** — see §2. |
 | "Foreign reference clubs" stub table | **Decoded, ~473 records located and read** — see §3. |
 | Real domestic (Argentina) team records | **55 records located file-wide** (§9), decoded via a corrected 4-byte signature (`0D 02 00 00` at header+2 — the naive 6-byte match only worked for River by coincidence, see §8's UPDATE). River's team-info fields (short_name through president) **confirmed high-confidence** via 5 independently-checkable real-world facts. Coach chain start **confirmed** (real coach name "Ramón Díaz" decodes exactly). **Full player roster confirmed** for River: exactly 27 players, walked end-to-end, real historically-documented names (Burgos, Bonano, Sorín, Gallardo, Saviola, Aimar, etc.) — see §6.6-§6.7. Tactics-block byte offsets confirmed exactly; field identity (jornada/formation_blob) medium-high confidence — see §6.3. |
-| Character map | **82 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **45 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`): 40 derived by decoding all 473 stub-table records (§3, see §7), plus **5 more** derived from the 55 real Argentina domestic team records (§8.3) — `(`, `)`, digits `2`/`3`/`5`, and `"` (double quote). This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). One byte, `0x56` (presumably digit `7`), remains open — see §8.3. |
-| Full container parser in `pcf-codec` | **Team-info + coach-chain + full player-roster parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_player_record`, `parse_player_roster`, `parse_pkf_container`/`parse_pkf_container_verbose`) — new, local types (`ContainerTeamRecord`/`ContainerCoachStub`/`ContainerPlayerRecord`), not a reuse of `pcf_model::Team`/`Coach`/`Player`. With the charmap fix (§8.3) and player-roster parsing (§8.4) both landed, `examples/dump_container.rs` finds **55 real domestic records**, parses **54 of them** end-to-end (the sole remaining failure is San Martín SJ, blocked purely by the one still-open `0x56` charmap byte, §8.3), and **all 54 successfully-parsed teams also get a fully-parsed, non-empty player roster** — including River's exactly-27-player roster matching the real 1998-99 squad name-for-name (§6.6-§6.7). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo (now also printing each team's player count and a couple of sample names). |
+| Character map | **90 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **53 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`): 40 derived by decoding all 473 stub-table records (§3, see §7), **5 more** derived from the 55 real Argentina domestic team records (§8.3) — `(`, `)`, digits `2`/`3`/`5`, and `"` (double quote) — and **8 more** (§10) derived by cross-referencing a large external corpus of real override-format DBC files from the community "EDITOR-PM9798" tool, including `0x56` (`'7'`), which resolves the previously-open San Martín (SJ) blocker. This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). One byte, `0xD5`, remains deliberately open — see §7.4/§10. |
+| Full container parser in `pcf-codec` | **Team-info + coach-chain + full player-roster parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_player_record`, `parse_player_roster`, `parse_pkf_container`/`parse_pkf_container_verbose`) — new, local types (`ContainerTeamRecord`/`ContainerCoachStub`/`ContainerPlayerRecord`), not a reuse of `pcf_model::Team`/`Coach`/`Player`. With the charmap fix (§8.3), the `0x56` fix (§10), and player-roster parsing (§8.4) all landed, `examples/dump_container.rs` finds **55 real domestic records** and parses **all 55 of them** end-to-end (San Martín SJ, the sole remaining failure as of §8.3, now parses too — see §10), and **all 55 successfully-parsed teams also get a fully-parsed, non-empty player roster** — including River's exactly-27-player roster matching the real 1998-99 squad name-for-name (§6.6-§6.7). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo (now also printing each team's player count and a couple of sample names). |
 
 ## 1. No encryption
 
@@ -889,16 +889,17 @@ existing corpus-cross-reference effort, not a new source). Re-running
 `examples/dump_container.rs` against the real file: **54 of the 55 real
 domestic records now parse successfully end-to-end** (up from 39).
 
-**One byte deliberately left open**: `0x56`, appearing once in San Martín
-(San Juan)'s stadium field (`"2[56] de Septiembre"`, presumably `'7'`,
-`banner@0x1955c7`). An apparent byte-table pattern (`0x50`/`0x51`,
+**One byte was left open at the time**: `0x56`, appearing once in San
+Martín (San Juan)'s stadium field (`"2[56] de Septiembre"`, presumably
+`'7'`, `banner@0x1955c7`). An apparent byte-table pattern (`0x50`/`0x51`,
 `0x52`/`0x53`, `0x54`/`0x55` all being adjacent-byte-pair-swapped digit
 pairs, which would predict `0x56`/`0x57` similarly, and `0x57='6'` is
-already independently confirmed) makes `0x56='7'` plausible, but this pass
+already independently confirmed) made `0x56='7'` plausible, but this pass
 could not independently fact-check "27 de Septiembre" against a known real
 fact for this specific club the way every other pair above was verified —
 left unresolved rather than forced, same precedent as `0xD5` in §7.4. This
-is the one remaining failure in `dump_container.rs`'s 55-record run.
+was the one remaining failure in `dump_container.rs`'s 55-record run.
+**Resolved in §10** via an unrelated external corpus.
 
 ### 8.4 Full player-roster parsing landed in `container.rs` — two more real bugs caught by real-file testing
 
@@ -1021,6 +1022,122 @@ method itself is incomplete (the scan is unconditional and file-wide, with
 no floor/filter that could hide records, same as `container.rs`'s own
 approach once given the corrected signature).
 
+## 10. Character map: EDITOR-PM9798 cross-reference — 8 new pairs, `0x56` resolved
+
+A community-shared editor tool bundle for PM97/PM98/PCPREMIER60 (earlier/
+related entries in the same Dinamic Multimedia "PC Fútbol"/"PC Premier
+Manager" engine family — **not** this project's own game, and **not**
+copied into this repo; treated purely as an external reference corpus, the
+same way `fixtures/pointers/*.csv` is treated as community-sourced
+reference metadata rather than a redistributable game asset) was found to
+contain 1,434 real `EQ97####.DBC` override-format files: `DBCS/PM97/DBDAT/
+EQUIPOS` (480 files), `DBCS/PM98/DBDAT/EQUIPOS` (476 files), and `DBCS/
+PCPREMIER60/DBDAT/EQ030022` (478 files) — confirmed same
+`"Copyright (c)1996 Dinamic Multimedia"` banner and same length-prefixed
+charmap-encoded string shape as this project's own understanding of the
+override format (PLAN.md Appendix A). These are Spanish/English/Italian/
+other European team and player records, giving a much larger and more
+diverse real-name corpus than the single Argentina `.PKF` this project has
+direct access to, especially for accented-letter coverage.
+
+### 10.1 Method
+
+Two throwaway investigation tools (not part of the codec contract, not
+committed as anything but disposable scratch code — see the tools table
+below): `investigate_editor_pm_dbc.rs` decodes every file's `short_name`/
+`stadium_name`/`long_name` (the team-info strings, which sit at a fixed,
+version-independent offset right after the banner+6-byte-header) lossily,
+the same way `dump_stub_table.rs` does. A second tool,
+`investigate_editor_pm_dbc_full.rs`, attempted a full structural walk using
+this project's own `dbc.rs` field layout, but that immediately surfaced a
+real, useful negative result (§10.2) rather than more names, so the bulk of
+the new evidence below comes from a third technique: lossily decoding the
+**raw remaining bytes of each file** after `long_name`, with no framing
+assumed at all. Because most of a real DBC file's bytes are still
+charmap-mapped text (names/free-text fields) interleaved with the raw
+binary numeric fields (which mostly happen to decode to `'a'`, since
+`0x00='a'` is already confirmed and zero-padding is common), this crude
+approach still surfaces long, readable, real player-name fragments any
+place the byte alignment happens to land on a string, without needing to
+solve this corpus's exact field layout at all. Every new byte below was
+inferred from a real, checkable name/fact the same way §7's methodology
+requires, then cross-checked against every other occurrence found.
+
+### 10.2 A genuine negative finding: this corpus's team-info layout differs from `dbc.rs`'s assumed one
+
+`investigate_editor_pm_dbc_full.rs`'s structural walk (mirroring
+`dbc.rs::read_team`/`read_player` field-for-field) fails partway through
+every single file: the two bytes this project's `dbc.rs` assumes are a
+literal `FE 06` magic right after the banner are **not** `FE 06` in this
+corpus (confirmed not a bug in the tool — skipping exactly 6 bytes
+positionally, without checking their content, reliably lands on a valid
+`short_name` length prefix for all 1,434 files), and the `pitch_size` field
+is confirmed (again) to be genuinely per-team variable data, not the fixed
+constant `dbc.rs` hardcodes (consistent with §6.4's own finding on the real
+Argentina file). Past that point, the `capacity`/`standing_capacity`/
+`president`/tactics-block layout diverges enough (this corpus's files are
+only ~2.7–4.1 KB, vs. ~93 KB for River's real container-internal record)
+that the structured walker hits EOF a few hundred bytes in, every time.
+**This is a real, useful finding, not a bug to fix**: it means the literal
+byte-for-byte layout `dbc.rs` currently implements (based on PLAN.md
+Appendix A's undocumented, unverified assumptions, per open question §5.4)
+is likely specific to this project's own edition/version, not a universal
+constant across the whole engine family — flagged here rather than
+"corrected" against a different, equally-unverified-for-*this*-game
+layout. `dbc.rs` was **not** modified as a result of this finding (out of
+scope for this pass, and doing so without a real Apertura 98/99-specific
+sample to verify against would just trade one unverified assumption for
+another).
+
+### 10.3 Eight new confirmed pairs
+
+All 8 are documented with their full citation trail directly in
+`fixtures/charmap/confirmed_real_map_v2.txt` (search for "third pass" in
+that file) rather than duplicated here; summary:
+
+| byte | glyph | confidence basis |
+|---|---|---|
+| `0x56` | `7` | 2 independent real club-name facts: Finnish club MyPa's real full name "Myllykosken Pallo **-47**" (founded 1947) and Dutch club AZ's real historical name "AZ **'67**" (founded 1967) both require this byte to complete a real, checkable year. **Resolves the previously-open San Martín (SJ) blocker** (§8.3) — see §10.4. |
+| `0x47` | `&` | 3 real English club official names, each cited twice: Millwall ("Football & Athletic Company"), Brighton & Hove Albion, Rushden & Diamonds. |
+| `0x39` | `X` (uppercase) | 5+ citations: Neuchâtel Xamax FC (real Swiss club), Basque surnames Goikoetxea/Etxeberria (×2), "Alexis", "Felix". Completes the lower/upper `+0x20` pattern already established for every other letter (lowercase `x=0x19` already confirmed). |
+| `0x83` | `â` | 1 citation, same word (Châteauroux, a real French club/city) referenced twice. |
+| `0xA6` | `Ç` (uppercase) | 2 citations: real Brazilian footballer Flávio Conceição, and a player record's own short_name "Bjeliça" (lowercase, already correctly decoding) matching its own long_name's uppercase form — self-consistent. |
+| `0xA8` | `É` (uppercase) | 6+ citations, all real Portuguese first names or a real player's documented name: André (Alves da) Cruz, Sérgio (×2), Rogério, Eugénio. |
+| `0xB0` | `Ñ` (uppercase) | 6 citations, all real Spanish football names/words: Cañizares, (de la) Peña, Iñigo, Ureña, Cañas, Muñiz. |
+| `0xBD` | `Ü` (uppercase) | 4 citations, each self-consistent with the same record's own already-correct lowercase "Müller" short_name: Uwe Müller, Krisztian Müller, Martin Müller, and a Brazilian player nicknamed "Müller". |
+
+`0xD5` (see §7.4) was **not** resolved by this pass — if anything, a new
+occurrence ("Stark[0xD5]s Park", Raith Rovers' real stadium "Stark's
+Park", which would need `0xD5="'"`) directly **contradicts** the original
+"plausibly é" hypothesis from the `.PKF` corpus, reinforcing rather than
+resolving the ambiguity. Left deliberately unresolved, per this file's own
+standing rule against forcing a decision between two mutually exclusive
+single-citation guesses.
+
+### 10.4 `0x56` resolved: San Martín (SJ) now parses end-to-end
+
+With `0x56='7'` added to `fixtures/charmap/confirmed_real_map_v2.txt`,
+re-running `examples/dump_container.rs` against the real
+`EQ003003.PKF` finds **all 55 of 55** real domestic team records parsing
+end-to-end (up from 54/55 in §8.3) — the San Martín (San Juan) team-info
+fields (including the previously-blocked stadium name, "25 de Septiembre")
+now decode cleanly, and (per §8.4's player-roster support) it also gets a
+fully-parsed player roster. `crates/pcf-codec/src/container.rs` gained a
+new real-fixture-aware test (`parses_real_san_martin_sj_record_if_present`,
+mirroring `parses_real_river_record_from_the_users_own_pkf_if_present`'s
+"skip gracefully if absent, assert real facts if present" pattern) that
+specifically exercises this: it looks up the record whose `short_name`
+decodes to `"San Martín (SJ)"` (only resolvable now that the charmap
+covers `0x56`) and asserts the stadium name decodes cleanly (with zero
+`charmap_unknown_byte` errors) to `"27 de Septiembre"`. Note: unlike
+River's independently-fact-checked stadium name, this specific date was
+NOT separately verified against a known real-world fact for this specific
+club (the `0x56='7'` byte itself is confirmed from unrelated real names —
+MyPa, AZ — per §10.3, not from this club's own history) — the assertion
+here is about the charmap gap being closed and the record parsing
+end-to-end, not an independent historical fact-check of this one date the
+way §6.2's five River facts were.
+
 ## Investigation tools (all under `crates/pcf-codec/examples/`)
 
 | Tool | Purpose |
@@ -1034,6 +1151,8 @@ approach once given the corrected signature).
 | `investigate_tactics_block.rs` | Sixth-pass investigator (§6.3, new): dumps and annotates the region between `Team.president` and the coach marker with exact cursor arithmetic against the override field order, and scans for candidate length prefixes. Usage: `cargo run -p pcf-codec --example investigate_tactics_block -- [path-to-blob]`. |
 | `enumerate_domestic_teams.rs` | Seventh-pass investigator (§9, new): scans a whole `.PKF` file for the corrected 4-byte domestic-record signature (`0D 02 00 00` at banner+38) and decodes every record's `short_name`. Found 55 domestic records where the naive 6-byte signature found only 1 (see §8 UPDATE). Usage: `cargo run -p pcf-codec --example enumerate_domestic_teams -- <path-to-EQ003003.PKF> [charmap-path]`. |
 | `build_synthetic_golden.rs` | Unrelated to PKF investigation — regenerates `fixtures/golden/synthetic_minimal.dbc` from the in-code synthetic `Dbc` builder (Agent A's TDD fixture, not real data). |
+| `investigate_editor_pm_dbc.rs` | Eighth-pass investigator (§10, new): lossy-decodes `short_name`/`stadium_name`/`long_name` (plus, optionally, a raw unstructured tail dump) from a directory of real `EQ97####.DBC` override files from an EXTERNAL corpus (the community "EDITOR-PM9798" tool — never bundled with or copied into this repo). Usage: `cargo run -p pcf-codec --example investigate_editor_pm_dbc -- <dir-with-EQ97-files> [charmap-path]`. |
+| `investigate_editor_pm_dbc_full.rs` | Ninth-pass investigator (§10.2, new): attempts a full structural walk of one of those external DBC files using this project's own `dbc.rs` field layout, lossily. Surfaced a genuine negative finding (§10.2: this corpus's team-info layout differs from `dbc.rs`'s current assumptions) rather than being the main source of new charmap evidence. Usage: `cargo run -p pcf-codec --example investigate_editor_pm_dbc_full -- <dir-with-EQ97-files> [charmap-path]`. |
 
 All of these are run inside the Docker dev container (Rust isn't
 installed on the host): `docker compose -f docker-compose.dev.yml exec

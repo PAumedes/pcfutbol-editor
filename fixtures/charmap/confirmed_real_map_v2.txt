@@ -43,6 +43,12 @@
 # fixtures/PKF_FORMAT.md's "Character map expansion" section for the full
 # writeup.
 #
+# UPDATE (third pass, EDITOR-PM9798 cross-reference): 8 more pairs added --
+# 0x56 (resolving the previously-open San Martín SJ blocker), 0x47, 0x39,
+# 0x83, 0xA6, 0xA8, 0xB0, 0xBD -- bringing the total to 90 confirmed pairs.
+# See the dedicated section near the end of this file and
+# PKF_FORMAT.md's "Character map: EDITOR-PM9798 cross-reference" section.
+#
 # CONFIDENCE TIERS (all pairs are believed correct; this just reflects how
 # much independent evidence backs each one):
 #   - No tag: 3+ independent-word citations, zero contradictions.
@@ -329,14 +335,103 @@ DB	º
 #   consistently as both the opening and closing delimiter.
 43	"
 
-# --- Still open (deliberately not guessed, same as 0xD5 above): ---------
-# 0x56 appears once, in banner@0x1955c7's stadium_name "2[56] de
-# Septiembre" (San Martín, San Juan) -- plausibly the digit '7' (making
-# "27 de Septiembre"), and consistent with an otherwise-elegant apparent
-# byte-table pattern (0x50/0x51='1'/'0', 0x52/0x53='3'/'2', 0x54/0x55=
-# '5'/'4', 0x58/0x59='9'/'8' all being adjacent-byte-pair-swapped digits,
-# which would predict 0x56/0x57='7'/'6' and 0x57='6' IS independently
-# confirmed above) -- but this pass could not independently fact-check
-# "27 de Septiembre" against a known real-world date/fact for this club,
-# and a byte-table-shape argument alone isn't the same standard of evidence
-# used elsewhere in this file. Left unresolved rather than guessed.
+# --- New (third pass): cross-referenced against a large EXTERNAL corpus ---
+# of real EQ97####.DBC override files from the community "EDITOR-PM9798"
+# tool (PM97/PM98/PCPREMIER60 -- earlier/related Dinamic Multimedia "PC
+# Fútbol"/"PC Premier Manager" engine entries, confirmed same banner and
+# same override-file string-encoding shape as this project's own
+# EQ97####.DBC format, but NOT this project's own game data / NOT
+# redistributed -- see PKF_FORMAT.md's "Character map: EDITOR-PM9798
+# cross-reference" section for the full writeup and methodology). Decoded
+# via a throwaway investigation tool (`investigate_editor_pm_dbc.rs`,
+# `investigate_editor_pm_dbc_full.rs`), lossy, against ~1,434 real DBC files
+# (PM97: 480, PM98: 476, PCPREMIER60: 478) covering Spanish/English/Italian/
+# other European team and player names.
+# 0x56='7': resolves the previously-open byte! Two independent real,
+#   well-documented football-club-name citations, both "founding year
+#   embedded in the official club name" conventions: Finnish club MyPa's
+#   long_name decodes to "Myllykosken Pallo-4[56]" -- MyPa's real full name
+#   is "Myllykosken Pallo -47" (founded 1947, hence "-47") -- and Dutch club
+#   AZ's long_name decodes to "AZ 6[56]" -- AZ's real historical name is
+#   "AZ '67" / "AZ67" (Alkmaar Zaanstreek, founded 1967, hence "67"). Both
+#   require [56]='7' to complete a real, checkable fact (not just pattern-
+#   matching the adjacent-byte-pair digit-table shape noted previously,
+#   though it's also consistent with that shape and with 0x57='6' already
+#   being confirmed). This directly unblocks San Martín (SJ) in this
+#   project's own container.rs (§8.3) -- see PKF_FORMAT.md for confirmation
+#   that team now parses end-to-end.
+56	7
+# 0x47='&': confirmed by 3 real, well-documented English club official
+#   names, each cited twice (short_name and long_name): "Millwall Football
+#   [47] Athletic Company" = Millwall's real historical/legal name
+#   ("Football & Athletic Company"), "Brighton [47] HA"/"Brighton [47] Hove
+#   Albion" = Brighton & Hove Albion, "Rushden [47] D."/"Rushden [47]
+#   Diamonds" = Rushden & Diamonds. Zero contradictions across occurrences.
+47	&
+# 0x39='X' (uppercase -- lowercase x=0x19 was already confirmed, but
+#   uppercase X was flagged in §7.2 as "never appeared in the corpus,
+#   unconfirmed" until now): 5+ independent citations, matching the
+#   systematic +0x20 lower/uppercase offset pattern used by every other
+#   letter pair in this file. "Neuchatel [39]amax F. C." = Neuchâtel Xamax
+#   FC (real Swiss club); "GOIKOET[39]EA" and "ET[39]EBERRIA" (x2) = real
+#   Basque surnames Goikoetxea and Etxeberria; "ALE[39]IS" = Alexis;
+#   "FELI[39]" = Felix. Zero contradictions.
+39	X
+# 0x83='â' (1 citation, same word referenced twice): "Ch[83]teauroux" (short
+#   AND long_name of the same French club record) = "Châteauroux", a real
+#   French city/club (La Berrichonne de Châteauroux). Single underlying
+#   word, but a complete, unambiguous, exact-length match.
+83	â
+# 0xA6='Ç' (uppercase cedilla; lowercase ç=0x86 already confirmed): 2
+#   citations. "Flavio da CONCEI[A6]AOz" = the real Brazilian footballer
+#   Flávio CONCEIÇÃO (Deportivo La Coruña/Real Madrid) -- note the game's
+#   own database renders the following ã as plain "AO" here (a data
+#   simplification in the source, not a codec gap, consistent with this
+#   file's own precedent for such things, e.g. §7.5's Bakhramov p/q note).
+#   Second, self-consistent citation: the same player record's OWN
+#   lowercase short_name "Bjeliça" (already decoding cleanly with the
+#   confirmed lowercase ç) is immediately followed by its own uppercase
+#   long_name "Nenad BJELI[A6]A" -- i.e. the record spells its own surname
+#   with a cedilla in both cases, self-consistently, independent of the
+#   Conceição citation.
+A6	Ç
+# 0xA8='É' (uppercase e-acute; lowercase é=0x88 already confirmed): 6+
+#   independent citations, all real, well-documented Portuguese first names
+#   or a real player's full name: "ANDR[A8] Alves da CRUZ" = the real
+#   Brazilian defender André Alves da Cruz ("André Cruz"); "S[A8]RGIO"
+#   (x2, different records) = "SÉRGIO"; "ROG[A8]RIO" = "ROGÉRIO";
+#   "EUG[A8]NIO" = "EUGÉNIO". Zero contradictions among the many clean,
+#   unambiguous occurrences (a couple of noisier, harder-to-parse-in-
+#   isolation occurrences elsewhere were not used as evidence either way).
+A8	É
+# 0xB0='Ñ' (uppercase n-tilde; lowercase ñ=0x90 already confirmed): 6
+#   independent, unambiguous real-name citations, all real Spanish football
+#   figures/words: "CA[B0]IZARES" = the real goalkeeper José Santiago
+#   CAÑIZARES; "DE LA PE[B0]A" = the real player Iván DE LA PEÑA; "I[B0]IGO"
+#   = the real Basque first name IÑIGO; "URE[B0]A" = UREÑA (real Spanish
+#   surname); "CA[B0]AS" = CAÑAS (real Spanish surname); "MU[B0]IZ" =
+#   MUÑIZ (real Spanish surname). Zero contradictions.
+B0	Ñ
+# 0xBD='Ü' (uppercase u-umlaut; lowercase ü=0x9D already confirmed): 4
+#   independent citations, each SELF-CONSISTENT with its own record's
+#   already-correctly-decoded lowercase short_name "Müller" immediately
+#   preceding an uppercase long_name needing the same letter -- "Uwe
+#   M[BD]LLER", "Krisztian M[BD]LLER", "Martin M[BD]LLER", and a Brazilian
+#   player nicknamed "Müller" (Antonio Correa da Costa, M[BD]LLER). Zero
+#   contradictions.
+BD	Ü
+#
+# Corpus/methodology note: this pass also independently RE-CONFIRMED (zero
+# contradictions found) `(`/`)`/digits/`"` from the prior domestic-team pass
+# and the full lowercase/uppercase consonant alphabet, by decoding hundreds
+# of real European club short_name/stadium_name/long_name strings cleanly
+# with the pre-existing 82-pair map (see PKF_FORMAT.md for the full
+# methodology writeup). `0xD5` (see the still-open note in §7.4/§8.3) was
+# NOT resolved by this pass either -- if anything, this corpus makes it
+# LESS clear-cut: a new occurrence, "Stark[D5]s Park" (Raith Rovers' real
+# stadium "Stark's Park"), would need [D5]="'" (apostrophe, already
+# assigned to 0x46), which directly conflicts with the original "[D5]
+# plausibly completes José" ('é') hypothesis from the EQ003003.PKF corpus.
+# Two different, mutually exclusive single-citation guesses for the same
+# byte is exactly the kind of ambiguity this file's methodology says NOT to
+# force a decision on -- 0xD5 remains deliberately unresolved.

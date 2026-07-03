@@ -1534,4 +1534,56 @@ mod tests {
             "expected only the 1-byte end-of-roster terminator left over (§6.7)"
         );
     }
+
+    // -----------------------------------------------------------------
+    // §10.4: the `0x56` charmap byte (confirmed via an unrelated external
+    // corpus -- see fixtures/charmap/confirmed_real_map_v2.txt and
+    // PKF_FORMAT.md §10) was the sole remaining blocker keeping San Martín
+    // (SJ) from parsing (§8.3: 54/55 real domestic records). Same
+    // real-fixture-optional pattern as the River test above: never fail
+    // just because the real, gitignored `.PKF` isn't present.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn parses_real_san_martin_sj_record_from_the_users_own_pkf_if_present() {
+        let path = Path::new("/c/PCF6AR/DBDAT/EQ003003.PKF");
+        let Ok(bytes) = std::fs::read(path) else {
+            println!(
+                "{} not found -- skipping, this test only runs meaningfully on a machine with \
+                 the user's own legally-owned copy of the game (never committed, see \
+                 fixtures/PKF_FORMAT.md)",
+                path.display()
+            );
+            return;
+        };
+
+        let charmap = confirmed_v2_charmap();
+        let ranges = find_domestic_team_records(&bytes);
+
+        let san_martin_sj = ranges
+            .into_iter()
+            .find_map(|(start, end)| {
+                let record = parse_team_record(&bytes[start..end], &charmap).ok()?;
+                (record.short_name == "San Martín (SJ)").then_some(record)
+            })
+            .expect(
+                "expected to find a domestic team record decoding short_name == \
+                 \"San Martín (SJ)\" -- this requires the 0x56 charmap byte (§10.4); if this \
+                 fails, the charmap fix regressed",
+            );
+
+        // §10.4: the stadium name is the exact field that was blocked by the
+        // unmapped 0x56 byte -- asserting it decodes cleanly (not erroring,
+        // and not containing a `\u{FFFD}` lossy-decode placeholder) is the
+        // real regression check here. Unlike River's independently
+        // fact-checked stadium name, this specific date was not separately
+        // verified against a known real-world fact for this specific club
+        // (see PKF_FORMAT.md §10.4's caveat) -- 0x56='7' itself was
+        // confirmed from unrelated real names (MyPa, AZ).
+        assert_eq!(san_martin_sj.stadium_name, "27 de Septiembre");
+        assert!(
+            !san_martin_sj.players.is_empty(),
+            "expected a non-empty roster (§8.4)"
+        );
+    }
 }
