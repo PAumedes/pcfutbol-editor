@@ -95,8 +95,24 @@ export async function runSelectTeam(
   }
 }
 
+/**
+ * Extracts a human string from whatever a rejected `invoke()` throws.
+ * Tauri commands return `Result<T, PcfError>` (see `pcf_model::PcfError` —
+ * `{ code, message, context }`), and a rejected `invoke()` promise rejects
+ * with that *plain object* as serialized over IPC, not a JS `Error`
+ * instance — so `e instanceof Error` is always false for a real command
+ * failure, and `String(e)` on a plain object stringifies to the useless
+ * `"[object Object]"` instead of surfacing `e.message`.
+ */
 function friendlyMessage(e: unknown): string {
-  const raw = e instanceof Error ? e.message : String(e);
+  let raw: string;
+  if (e instanceof Error) {
+    raw = e.message;
+  } else if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") {
+    raw = e.message;
+  } else {
+    raw = String(e);
+  }
   // Never surface a raw stack trace to the user (acceptance bar in
   // PLAN.md §6/Agent F) — map to something actionable, keep the raw detail
   // only for a "details" disclosure the screen may render separately.

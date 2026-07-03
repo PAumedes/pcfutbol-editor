@@ -3,6 +3,10 @@
 /ui/dist
 /src-tauri/target
 /src-tauri/gen
+
+# Local cross-compiled Windows binary, copied out of the dev container for
+# manual smoke-testing on the host — not a build artifact anyone else needs.
+/windows-build
 *.bak
 .DS_Store
 

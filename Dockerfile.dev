@@ -15,10 +15,13 @@ RUN apt-get update \
         xdotool \
         scrot \
         x11-utils \
+        mingw-w64 \
+        nsis \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rustup component add clippy rustfmt
+RUN rustup component add clippy rustfmt \
+    && rustup target add x86_64-pc-windows-gnu
 
 WORKDIR /workspace

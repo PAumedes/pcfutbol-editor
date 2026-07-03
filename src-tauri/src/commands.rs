@@ -30,28 +30,67 @@ use crate::mock;
 /// synthetic pointer can never collide with a genuine one.
 const SYNTHETIC_POINTER_BASE: u16 = 60_000;
 
+/// Candidate directories to search for `fixtures/`, in priority order:
+/// 1. Next to the running executable (`<exe_dir>/fixtures/...`) — the shape
+///    a distributed/copied build (this project has no installer yet, only
+///    a manually-copied folder) is expected to ship in: `fixtures/` sitting
+///    alongside the `.exe`.
+/// 2. `CARGO_MANIFEST_DIR` baked in at *compile* time — works for any
+///    `cargo build`/`cargo test`/`cargo run` invocation (dev container or
+///    otherwise), since the source tree (and therefore `fixtures/`) is
+///    guaranteed present next to wherever it was compiled.
+///
+/// A real bug this fixes: a binary built in one place (e.g. a Docker dev
+/// container at `/workspace`) and then copied elsewhere to run (e.g. a
+/// cross-compiled Windows `.exe` copied onto the host machine) used to hard
+/// -fail every command that needs the charmap, since `CARGO_MANIFEST_DIR`
+/// pointed at a path (`/workspace/src-tauri`) that doesn't exist at all on
+/// the machine actually running it. `current_exe()`'s directory does still
+/// make sense on that machine.
+///
+/// TODO(D): once packaging (Agent G / PLAN.md M-later) bundles `fixtures/`
+/// as a proper Tauri resource, add the app handle's resource-dir as a third
+/// candidate ahead of these two rather than relying on a manually-copied
+/// sibling folder.
+fn fixtures_candidate_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            dirs.push(exe_dir.join("fixtures"));
+        }
+    }
+    dirs.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("fixtures"),
+    );
+    dirs
+}
+
 /// Loads the byte↔char substitution table needed to decode `.PKF`/`.DBC`
 /// text (PLAN.md §9 risk #1) from `fixtures/charmap/confirmed_real_map_v2.txt`
 /// — the more complete of the two real (non-synthetic) charmaps, per
 /// `fixtures/charmap/README.md` and `crates/pcf-codec/examples/dump_container.rs`'s
-/// own default.
-///
-/// TODO(D): this resolves the charmap path relative to `CARGO_MANIFEST_DIR`
-/// at *compile* time, which works from any `cargo build`/`cargo test`
-/// invocation (dev container or otherwise) since it's baked into the
-/// binary rather than resolved against the process's runtime working
-/// directory — but it still assumes the source tree (and therefore
-/// `fixtures/`) is present next to wherever this was compiled. A packaged
-/// release build needs this bundled as a proper Tauri resource (see
-/// `tauri.conf.json`'s `bundle.resources`) and loaded via the app handle's
-/// resource-dir API instead. Not solved in this pass.
+/// own default. Tries each of [`fixtures_candidate_dirs`] in order.
 fn load_charmap() -> Result<pcf_codec::CharMap, PcfError> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("fixtures")
-        .join("charmap")
-        .join("confirmed_real_map_v2.txt");
-    pcf_codec::CharMap::load(&path)
+    let tried: Vec<PathBuf> = fixtures_candidate_dirs()
+        .into_iter()
+        .map(|dir| dir.join("charmap").join("confirmed_real_map_v2.txt"))
+        .collect();
+    match tried.iter().find(|p| p.is_file()) {
+        Some(path) => pcf_codec::CharMap::load(path),
+        None => Err(PcfError::new(
+            "charmap_not_found",
+            "couldn't find fixtures/charmap/confirmed_real_map_v2.txt in any known location",
+        )
+        .with_context(
+            tried
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("; "),
+        )),
+    }
 }
 
 /// Cross-references real Argentina team pointers out of
@@ -72,12 +111,11 @@ fn load_charmap() -> Result<pcf_codec::CharMap, PcfError> {
 /// guess at a fuzzy match.
 fn load_argentina_pointer_table() -> HashMap<String, u16> {
     let mut table = HashMap::new();
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("fixtures")
-        .join("pointers")
-        .join("team_pointers.csv");
-    let Ok(contents) = fs::read_to_string(&path) else {
+    let contents = fixtures_candidate_dirs()
+        .into_iter()
+        .map(|dir| dir.join("pointers").join("team_pointers.csv"))
+        .find_map(|path| fs::read_to_string(&path).ok());
+    let Some(contents) = contents else {
         return table;
     };
 

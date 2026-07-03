@@ -79,6 +79,27 @@ describe("runLoadPkf", () => {
       expect(state.message).toMatch(/permission denied/);
     }
   });
+
+  it("surfaces a Tauri command's PcfError.message, not \"[object Object]\"", async () => {
+    // A rejected `invoke()` rejects with the plain `{ code, message, context }`
+    // object Tauri deserializes from the Rust side's `Result::Err(PcfError)` —
+    // not a JS `Error` instance. Regression test for a real bug: the screen
+    // used to show "We couldn't read that game folder ([object Object])."
+    const deps = {
+      ...noopDeps(),
+      loadPkf: vi.fn().mockRejectedValue({
+        code: "charmap_not_found",
+        message: "couldn't find fixtures/charmap/confirmed_real_map_v2.txt in any known location",
+        context: null,
+      }),
+    };
+    const state = await runLoadPkf(deps, "/games/apertura");
+    expect(state.step).toBe("error");
+    if (state.step === "error") {
+      expect(state.message).not.toMatch(/\[object Object\]/);
+      expect(state.message).toMatch(/couldn't find fixtures\/charmap/);
+    }
+  });
 });
 
 describe("runSelectTeam", () => {
