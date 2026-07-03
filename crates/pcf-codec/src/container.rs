@@ -633,30 +633,24 @@ pub fn parse_player_roster(
     Ok(players)
 }
 
-/// Best-effort wrapper around [`find_first_player_record`] +
-/// [`parse_player_roster`] for [`parse_team_record`]'s use: locates the
-/// roster's real start (skipping over the unconfirmed region that precedes
-/// it, discarded the same way `find_coach_stub`'s own leading skip already
-/// is — see `ContainerTeamRecord::players`' doc comment), then walks it.
+/// Best-effort roster walk for [`parse_team_record`]'s use, given `bytes`
+/// already starting exactly at the roster's confirmed-real first marker
+/// (from [`find_first_player_record`], called by the caller BEFORE the
+/// coach-marker search — see `parse_team_record`'s own comment on why that
+/// order matters for Vélez-shaped records).
 ///
-/// Degrades gracefully instead of failing the whole team record: if no
-/// plausible player marker is found at all, returns `(vec![], bytes)`
-/// unchanged (mirrors `find_coach_stub`'s `None` case). If the roster walk
-/// itself fails partway through (a single record errors out — not seen on
-/// the real 27-player River roster, but not proven impossible for some
+/// Degrades gracefully instead of failing the whole team record: if the
+/// roster walk fails partway through (a single record errors out — not seen
+/// on the real 27-player River roster, but not proven impossible for some
 /// other team's data), whatever parsed successfully before the failure is
 /// kept, and everything from that failing record onward is returned as the
 /// second tuple element instead of being discarded.
-fn walk_player_roster_best_effort(
+fn walk_player_roster_from(
     bytes: &[u8],
     charmap: &CharMap,
 ) -> (Vec<ContainerPlayerRecord>, Vec<u8>) {
-    let Some(start) = find_first_player_record(bytes, charmap) else {
-        return (Vec::new(), bytes.to_vec());
-    };
-
     let mut players = Vec::new();
-    let mut pos = start;
+    let mut pos = 0;
     while pos < bytes.len() && bytes[pos] == PLAYER_MARKER {
         match parse_player_record(&bytes[pos..], charmap) {
             Ok((player, consumed)) => {
@@ -715,11 +709,47 @@ pub fn parse_team_record(bytes: &[u8], charmap: &CharMap) -> Result<ContainerTea
     let president = r.string(charmap)?;
 
     let rest = &bytes[r.offset()..];
-    let (coach, after_coach) = match find_coach_stub(rest, charmap) {
-        Some((end_in_rest, coach)) => (Some(coach), &rest[end_in_rest..]),
-        None => (None, rest),
+
+    // Locate the player roster's real start FIRST, then only search for the
+    // coach marker in the region strictly before it (see `find_coach_stub`'s
+    // doc comment and PKF_FORMAT.md's Vélez UPDATE for why the search order
+    // matters). `find_first_player_record`'s own trial-parse validation
+    // (full downstream structure + every enum byte in range) makes it a far
+    // more reliable anchor than `find_coach_stub`'s "first `02 02` match"
+    // heuristic, which was found to false-positive on ordinary Spanish prose
+    // ("...dor lo convocó...", "...ra integrar el pl...") sitting INSIDE a
+    // player's own free-text biography fields for at least one real team
+    // (Vélez) -- unlike River, where the real coach marker happens to be the
+    // very first `02 02` byte pair anywhere in `rest`, Vélez's record has no
+    // plausible coach chain at all before its player roster begins, and the
+    // old code searched the *entire* remainder (including all player data)
+    // for a coach marker, matching that prose fragment deep inside the
+    // roster and silently discarding every real player before it. Bounding
+    // the coach search to `rest[..roster_start]` makes that false match
+    // impossible: a `02 02` byte pair occurring inside player data can never
+    // be mistaken for the coach chain again, and the roster walk always
+    // starts at the roster's own confirmed-real first marker instead of
+    // wherever a stray coach match happened to end.
+    let roster_start = find_first_player_record(rest, charmap);
+    let coach_search_region = match roster_start {
+        Some(start) => &rest[..start],
+        None => rest,
     };
-    let (players, trailing_raw) = walk_player_roster_best_effort(after_coach, charmap);
+    let coach_match = find_coach_stub(coach_search_region, charmap);
+    let coach = coach_match.as_ref().map(|(_, coach)| coach.clone());
+
+    let (players, trailing_raw) = match roster_start {
+        Some(start) => walk_player_roster_from(&rest[start..], charmap),
+        // No plausible player roster found at all: fall back to the
+        // pre-roster-search behavior (mirrors the old `after_coach`
+        // handling) so a coach-only record (no roster ever implemented/
+        // present) still reports `trailing_raw` as everything after the
+        // coach chain, not the coach chain's own bytes too.
+        None => match coach_match {
+            Some((end_in_region, _)) => (Vec::new(), rest[end_in_region..].to_vec()),
+            None => (Vec::new(), rest.to_vec()),
+        },
+    };
 
     Ok(ContainerTeamRecord {
         header_prefix,
@@ -1585,5 +1615,104 @@ mod tests {
             !san_martin_sj.players.is_empty(),
             "expected a non-empty roster (§8.4)"
         );
+    }
+
+    // -----------------------------------------------------------------
+    // Real Vélez Sarsfield regression test (PKF_FORMAT.md UPDATE): the
+    // user's own real record was reporting only 5 players (real 1998-99
+    // Vélez squads run ~20-30) and a garbled coach name ("dor lo convocó" /
+    // "ra integrar el pl" -- ordinary Spanish prose fragments, not a real
+    // person's name). Root cause: `find_coach_stub`'s old "first `02 02`
+    // match anywhere in the remainder" search wasn't bounded to the region
+    // before the player roster, so for Vélez (whose record has no locatable
+    // coach chain at all before the roster) it matched a coincidental
+    // `02 02` byte pair deep inside a player's own free-text biography
+    // field, consumed it as a fake "coach", and started the roster walk
+    // from there -- silently discarding every real player before that
+    // point (including Vélez's real, legendary goalkeeper José Luis
+    // CHILAVERT). Fixed by locating the roster's real start FIRST (via
+    // `find_first_player_record`'s much stronger full-structure validation)
+    // and only searching for a coach marker in the bytes strictly before
+    // it. Same real-fixture-optional pattern as the other real-file tests
+    // above.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn parses_real_velez_record_from_the_users_own_pkf_if_present() {
+        let path = Path::new("/c/PCF6AR/DBDAT/EQ003003.PKF");
+        let Ok(bytes) = std::fs::read(path) else {
+            println!(
+                "{} not found -- skipping, this test only runs meaningfully on a machine with \
+                 the user's own legally-owned copy of the game (never committed, see \
+                 fixtures/PKF_FORMAT.md)",
+                path.display()
+            );
+            return;
+        };
+
+        let charmap = confirmed_v2_charmap();
+        let ranges = find_domestic_team_records(&bytes);
+
+        let velez = ranges
+            .into_iter()
+            .find_map(|(start, end)| {
+                let record = parse_team_record(&bytes[start..end], &charmap).ok()?;
+                (record.short_name == "Vélez").then_some(record)
+            })
+            .expect("expected to find a domestic team record decoding short_name == \"Vélez\"");
+
+        // Team-info fields were never actually broken for Vélez (only the
+        // coach/roster region downstream of them) -- a couple of real,
+        // independently-checkable facts as a sanity check.
+        assert_eq!(velez.stadium_name, "José Amalfitani");
+        assert_eq!(velez.long_name, "Club Atlético Vélez Sarsfield");
+        assert_eq!(velez.founded, 1910);
+
+        // The regression itself: a real top-flight Argentine squad has far
+        // more than 5 registered players. Bug report's exact number (5) is
+        // asserted as an explicit non-regression floor.
+        assert!(
+            velez.players.len() > 10,
+            "expected a plausible full-squad player count, got {} (was 5 before the \
+             coach/roster ordering fix)",
+            velez.players.len()
+        );
+
+        // No plausible coach chain exists before Vélez's real roster start
+        // (confirmed by hand -- the only `02 02` byte pair in that region
+        // fails to parse as a real coach) -- `None` here is the honest
+        // result, not a garbled/false-positive name.
+        assert!(
+            velez.coach.is_none(),
+            "expected no coach match for Vélez (no real coach chain found before the roster); \
+             got {:?}",
+            velez.coach
+        );
+
+        // Real, historically documented Vélez Sarsfield 1998-99 players
+        // that a correct roster walk must include: José Luis CHILAVERT
+        // (Paraguayan international, one of the most famous goalkeepers in
+        // the world at the time) and Ariel DE LA FUENTE, both of whom the
+        // old buggy walk discarded entirely because they came before the
+        // false-positive "coach" match.
+        assert!(
+            velez.players.iter().any(|p| p.short_name == "Chilavert"),
+            "expected to find José Luis Chilavert in Vélez's real roster"
+        );
+        assert!(
+            velez.players.iter().any(|p| p.short_name == "De la Fuente"),
+            "expected to find Ariel De la Fuente in Vélez's real roster"
+        );
+
+        // Jersey number 0 (impossible for a real player) was reported as a
+        // separate-looking bug but shares the same root cause: it's a real,
+        // valid squad member's raw `number` byte (not a mis-decoded field
+        // once the roster is correctly aligned) -- the file-wide sanity
+        // pass (see `examples/investigate_velez.rs`) found `number == 0`
+        // recurring across the great majority of teams' rosters, plausibly
+        // representing reserve/not-yet-assigned squad members rather than a
+        // parse error. Not asserted against here (it's real, not a bug),
+        // but documented so a future reader doesn't reopen this as if it
+        // were still open.
     }
 }

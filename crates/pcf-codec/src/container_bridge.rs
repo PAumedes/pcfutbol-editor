@@ -190,11 +190,40 @@ fn container_team_info(record: &ContainerTeamRecord) -> Team {
         founded: record.founded,
         members: record.members,
         president: record.president.clone(),
-        // Not parsed by `ContainerTeamRecord`: PKF_FORMAT.md §6.3 locates
-        // `budget` positionally (a u24 LE right after `president`) but
-        // `container.rs` doesn't extract it into a struct field yet — it's
-        // part of `trailing_raw`. Default to 0 rather than reach into the
-        // raw bytes here (that's `container.rs`'s job, not this bridge's).
+        // Not parsed by `ContainerTeamRecord`, and **deliberately still
+        // not implemented** after a real-file investigation (Vélez bug
+        // report, PKF_FORMAT.md UPDATE, "budget field investigation"):
+        // PKF_FORMAT.md §6.3 originally hypothesized `budget` as a u24 LE
+        // right after `president`, by analogy with the override format's
+        // field order. Checking that exact position against 55 real
+        // domestic records found real, structured data there, but it does
+        // NOT look like a per-team currency budget: (1) the 2-3 byte value
+        // is immediately followed (after a few zero-padding bytes) by a
+        // length-prefixed string that decodes to real, historically
+        // accurate sponsor names ("QUILMES", "CABLEVISION", "MULTICANAL",
+        // "NO TIENE" = "none") — this whole region is a sponsor block, not
+        // an economy block; (2) the numeric value ties in an implausible
+        // way for a real budget: River and Boca (Argentina's two biggest,
+        // most storied clubs) share the exact same value (2025), San
+        // Lorenzo and Independiente share a different exact same value
+        // (1860), roughly half of all 55 teams read exactly 0 (including
+        // several real, well-known top-flight clubs of the era), and the
+        // value does NOT correlate with whether the team even has a
+        // sponsor (Independiente reads "NO TIENE" yet still has a nonzero
+        // value identical to sponsored San Lorenzo). This pattern — small
+        // integer, shared across peer-tier clubs, decorrelated from the
+        // adjacent sponsor field — looks far more like a "reputation" or
+        // "tier" rating used internally by the game's economy/AI than a
+        // literal peso figure a user would manage, but there's no
+        // independently-checkable real-world fact (unlike stadium capacity
+        // or a club president's name) to confirm either reading. Per this
+        // project's own charmap-provenance rigor standard, an unconfirmed
+        // guess isn't wired in just to make the UI show a nonzero number:
+        // `budget` stays honestly `0` until a real fact (a documented real
+        // club budget figure, or evidence pinning down what this value
+        // actually drives in-game) can confirm or refute either reading.
+        // See `fixtures/PKF_FORMAT.md`'s UPDATE note for the full
+        // evidence trail (all 55 teams' raw bytes at this offset).
         budget: 0,
         affiliate1: NO_AFFILIATE,
         affiliate2: NO_AFFILIATE,

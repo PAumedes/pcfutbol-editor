@@ -6,6 +6,7 @@
   import StatField from "../lib/components/StatField.svelte";
   import { currentDbc, setDbc, validationErrors } from "./lib/appStore";
   import { STRING_LENGTH_LIMITS } from "./lib/validation";
+  import { countryName } from "../lib/countryNames";
 
   function errorsFor(field: string) {
     return $validationErrors.filter((e) => e.field === field);
@@ -82,7 +83,7 @@
     </label>
 
     <label>
-      Budget (pesetas)
+      Budget (Pesos Argentinos)
       <input
         type="number"
         min="0"
@@ -93,9 +94,27 @@
   </div>
 
   <div class="pcf-stats-row">
-    <StatField label="Capacity" value={$currentDbc.team.capacity} />
-    <StatField label="Members" value={$currentDbc.team.members} />
-    <StatField label="Country code" value={$currentDbc.team.country} />
+    <label>
+      Capacity
+      <input
+        type="number"
+        min="0"
+        value={$currentDbc.team.capacity}
+        on:input={(e) => update("capacity", Number(e.currentTarget.value))}
+      />
+    </label>
+
+    <label>
+      Members
+      <input
+        type="number"
+        min="0"
+        value={$currentDbc.team.members}
+        on:input={(e) => update("members", Number(e.currentTarget.value))}
+      />
+    </label>
+
+    <StatField label="Country" value={countryName($currentDbc.team.country)} />
   </div>
 </BeveledPanel>
 
@@ -116,7 +135,11 @@
   }
   .pcf-stats-row {
     display: flex;
+    align-items: flex-end;
     gap: var(--pcf-spacing-lg);
     margin-top: var(--pcf-spacing-md);
+  }
+  .pcf-stats-row input {
+    width: 8rem;
   }
 </style>

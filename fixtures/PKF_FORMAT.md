@@ -26,7 +26,7 @@ real club names, which are factual and already public in
 | "Foreign reference clubs" stub table | **Decoded, ~473 records located and read** — see §3. |
 | Real domestic (Argentina) team records | **55 records located file-wide** (§9), decoded via a corrected 4-byte signature (`0D 02 00 00` at header+2 — the naive 6-byte match only worked for River by coincidence, see §8's UPDATE). River's team-info fields (short_name through president) **confirmed high-confidence** via 5 independently-checkable real-world facts. Coach chain start **confirmed** (real coach name "Ramón Díaz" decodes exactly). **Full player roster confirmed** for River: exactly 27 players, walked end-to-end, real historically-documented names (Burgos, Bonano, Sorín, Gallardo, Saviola, Aimar, etc.) — see §6.6-§6.7. Tactics-block byte offsets confirmed exactly; field identity (jornada/formation_blob) medium-high confidence — see §6.3. |
 | Character map | **90 confirmed byte↔glyph pairs.** The original 37 (`fixtures/charmap/confirmed_real_map.txt`, from the manual's hex-editing appendix) plus **53 new ones** (`fixtures/charmap/confirmed_real_map_v2.txt`): 40 derived by decoding all 473 stub-table records (§3, see §7), **5 more** derived from the 55 real Argentina domestic team records (§8.3) — `(`, `)`, digits `2`/`3`/`5`, and `"` (double quote) — and **8 more** (§10) derived by cross-referencing a large external corpus of real override-format DBC files from the community "EDITOR-PM9798" tool, including `0x56` (`'7'`), which resolves the previously-open San Martín (SJ) blocker. This supersedes and reconciles §6.8's 13 provisional single-fact inferences from the domestic-team investigation (11 of 13 match exactly; 1 byte, `0x50`, is corrected — see §7.3). One byte, `0xD5`, remains deliberately open — see §7.4/§10. |
-| Full container parser in `pcf-codec` | **Team-info + coach-chain + full player-roster parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_player_record`, `parse_player_roster`, `parse_pkf_container`/`parse_pkf_container_verbose`) — new, local types (`ContainerTeamRecord`/`ContainerCoachStub`/`ContainerPlayerRecord`), not a reuse of `pcf_model::Team`/`Coach`/`Player`. With the charmap fix (§8.3), the `0x56` fix (§10), and player-roster parsing (§8.4) all landed, `examples/dump_container.rs` finds **55 real domestic records** and parses **all 55 of them** end-to-end (San Martín SJ, the sole remaining failure as of §8.3, now parses too — see §10), and **all 55 successfully-parsed teams also get a fully-parsed, non-empty player roster** — including River's exactly-27-player roster matching the real 1998-99 squad name-for-name (§6.6-§6.7). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo (now also printing each team's player count and a couple of sample names). |
+| Full container parser in `pcf-codec` | **Team-info + coach-chain + full player-roster parsing implemented and verified against the real file** in `crates/pcf-codec/src/container.rs` (`parse_team_record`, `find_domestic_team_records`, `parse_player_record`, `parse_player_roster`, `parse_pkf_container`/`parse_pkf_container_verbose`) — new, local types (`ContainerTeamRecord`/`ContainerCoachStub`/`ContainerPlayerRecord`), not a reuse of `pcf_model::Team`/`Coach`/`Player`. With the charmap fix (§8.3), the `0x56` fix (§10), and player-roster parsing (§8.4) all landed, `examples/dump_container.rs` finds **55 real domestic records** and parses **all 55 of them** end-to-end (San Martín SJ, the sole remaining failure as of §8.3, now parses too — see §10), and **all 55 successfully-parsed teams also get a fully-parsed, non-empty player roster** — including River's exactly-27-player roster matching the real 1998-99 squad name-for-name (§6.6-§6.7). See `crates/pcf-codec/examples/dump_container.rs` for an end-to-end demo (now also printing each team's player count and a couple of sample names). **UPDATE (§11):** a real-world bug report on Vélez Sarsfield's own record found and fixed a coach/roster search-order bug (the coach-marker scan wasn't bounded to the region before the player roster, so it could — and for Vélez did — false-positive on prose inside player data and silently discard real players before that point); `budget` remains deliberately unconfirmed/not wired in (see §11.3). |
 
 ## 1. No encryption
 
@@ -1138,6 +1138,151 @@ here is about the charmap gap being closed and the record parsing
 end-to-end, not an independent historical fact-check of this one date the
 way §6.2's five River facts were.
 
+## 11. UPDATE: Vélez Sarsfield real-world bug report — coach/roster search-order bug fixed, budget still unconfirmed
+
+The user tried the real running app on their own real club, Vélez
+Sarsfield, and reported 4 concrete bugs (budget always `0`, only 5 players
+in the squad, one player with jersey number `0`, and a garbled coach name).
+Investigated with a new throwaway tool, `investigate_velez.rs` (see the
+tools table below), which isolates Vélez's real record and instruments the
+coach-marker and player-marker candidate scans directly against the real
+file.
+
+### 11.1 Root cause for the roster undercount (#2) and the garbled coach (#4) — CONFIRMED, high confidence, FIXED
+
+Both bugs share one root cause. `find_coach_stub` (used by
+`parse_team_record`) originally scanned for the first `02 02` byte pair
+anywhere in the **entire remainder of the record**, including all player
+data — this happened to be safe for River only because River's real coach
+marker is the very first `02 02` occurrence in the whole blob (§6.5).
+Vélez's record has **no locatable coach chain at all** before its player
+roster begins (unlike River, `find_coach_stub` finds no plausible `02 02`
+match in the true pre-roster region — the coach chain is either genuinely
+absent for this team's record or encoded somewhere this heuristic can't
+find, same "thinner records for smaller/other clubs" pattern already noted
+in §8.2 for missing coach chains generally). With no early match, the old
+unbounded scan kept going deep into player data and found a coincidental
+`02 02` byte pair sitting inside one player's own free-text biography field
+— the two "strings" it decoded (`"dor lo convocó "` / `"ra integrar el
+pl"`) are ordinary Spanish sentence fragments (roughly "...manager called
+him up..." / "...to join the squad..."), not a real person's name, but they
+still passed the coach-shape validity check (non-empty, plausible length,
+fully charmap-decodable). This consumed those bytes as a fake "coach" and
+started the player-roster search from that point onward — silently
+discarding every real player that came *before* it in the file, including
+Vélez's real, legendary goalkeeper **José Luis CHILAVERT** (a 1998-era
+world-famous Paraguayan international) and **Ariel DE LA FUENTE**. Whatever
+real players happened to remain *after* the false match (5 of them) still
+parsed correctly (their raw bytes are genuinely real player data, just
+starting from the wrong point in the roster) — this is exactly why the bug
+manifested as "5 real-looking players", not garbage/a crash.
+
+**Fix**: `parse_team_record` now locates the player roster's real start
+FIRST (via `find_first_player_record`, which already requires the *entire*
+downstream player-record structure to parse and every enum-shaped byte to
+land in its confirmed real-data range — a much stronger, more reliable
+anchor than `find_coach_stub`'s "first `02 02` match" heuristic), and only
+searches for a coach marker in the bytes strictly *before* that point. A
+coincidental `02 02` inside player data can no longer be mistaken for the
+coach chain, because player data is never even in the coach search's scope
+anymore.
+
+**Verified against the real file**: Vélez's `players.len()` goes from **5
+(wrong) to 20 (real squad, including Chilavert, De la Fuente, and 18 more —
+all real, era-correct Vélez Sarsfield 1998-99 players by name, e.g.
+Bassedas, Cubero, Sotomayor, Cardozo, Méndez)**, and `coach` goes from
+`Some(ContainerCoachStub { short_name: "dor lo convocó ", ... })` (garbage)
+to `None` (honest — this team's record genuinely has no locatable coach
+chain before its roster, same as the great majority of the file's other 53
+non-River teams — see §11.4 below). River's own coach/roster (`Ramón
+Díaz`, 27 players) and San Martín (SJ)'s roster are unaffected — re-running
+both existing real-fixture tests plus a new
+`parses_real_velez_record_from_the_users_own_pkf_if_present` test (asserts
+`players.len() > 10`, Chilavert and De la Fuente present by name,
+`coach.is_none()`) all pass.
+
+### 11.2 Jersey number `0` (#3) — investigated, NOT a bug, same root cause but not a new defect
+
+Confirmed it's the *same* root cause as #2 (the misaligned roster start
+made every downstream field, including `number`, come from the wrong
+byte offset for the 5 players it did find) — but after the §11.1 fix, one
+of Vélez's *correctly-aligned, correctly-parsed* real players (Favio Héctor
+ZARATE) still reads `number == 0`. A file-wide sanity pass (all 55 teams,
+via the same `investigate_velez.rs` tool) found `number == 0` recurring
+across the **great majority of teams' rosters** — e.g. Banfield (5 of 18
+players), Arsenal (29 of 30 players!), Dep. Morón (8 of 25) — not an
+isolated anomaly. This is far too widespread and inconsistent with a
+byte-alignment bug (which would show up as garbage names/attrs alongside
+the bad number, and it doesn't here — every other field for these
+`number == 0` players decodes to a plausible real name/attrs). Most likely
+explanation: `0` is this container's real sentinel for "no shirt number
+assigned yet" (reserve/non-first-team squad members, common in a database
+covering an entire division's full registered squads, not just each
+club's nominal best XI) — plausible, not confirmed against an independent
+real fact, but clearly not a parser defect. **Left as-is** (not "fixed",
+because there's nothing to fix): `ContainerPlayerRecord::number` is kept
+raw exactly as before.
+
+### 11.3 Budget (#1) — investigated, still honestly UNCONFIRMED (not wired in)
+
+§6.3's original "budget = u24 LE right after `president`" was a hypothesis
+by analogy with the override format's field order, never independently
+checked against real bytes. Checking it now, across all 55 real domestic
+records (`investigate_velez.rs`'s "budget-offset check" pass): the 2-3
+byte value at that exact position is followed a few zero-padding bytes
+later by a length-prefixed string that decodes to real, historically
+accurate **sponsor names** — `"QUILMES"` (River, Boca, Vélez — Quilmes beer
+was Argentina's dominant football sponsor in this era), `"CABLEVISION"`
+(San Lorenzo — a real Argentine cable-TV company), `"MULTICANAL"` (Racing —
+another real Argentine cable-TV company), `"NO TIENE"` (Independiente —
+literally "doesn't have [a sponsor]"). This is a genuine new finding (a
+sponsor-name block, not documented before), but it argues AGAINST the
+"budget" reading for the preceding numeric value, not for it:
+
+- River and Boca (Argentina's two biggest, most historically dominant
+  clubs) read the exact same value (2025); San Lorenzo and Independiente
+  (both separately, also top-5-tier clubs of the era) read a different but
+  also exactly-shared value (1860). A real per-team currency budget
+  shouldn't tie exactly between two different clubs unless by
+  coincidence — shared values across peer-tier clubs looks more like a
+  categorical "tier"/"reputation" rating than a literal peso figure.
+- Independiente's value (1860) is nonzero despite that same record's
+  sponsor field explicitly reading `"NO TIENE"` (no sponsor) — if the
+  number were sponsorship income specifically, an unsponsored club
+  reading a nonzero value tied to a *sponsored* club (San Lorenzo) would
+  be inconsistent. This decorrelation from the adjacent sponsor field
+  argues the number isn't "sponsor deal value" either.
+- Roughly half of the 55 teams (including several genuine, well-known
+  1998-99 top-flight clubs, e.g. Dep. Español, Arsenal, San Martín (Tuc))
+  read exactly `0` — plausible for a "not populated for this record"
+  default, but also exactly the same value the honest hardcoded fallback
+  already returns, so wiring in "sometimes-0, sometimes-tied-across-clubs"
+  data wouldn't obviously be an improvement.
+
+No independently-checkable real-world fact (unlike River's stadium
+capacity, founding year, or president's name) exists to confirm either
+reading (literal budget vs. tier/reputation rating vs. something else
+entirely) for this specific numeric field. Per this project's own
+charmap-provenance rigor standard (never force an unconfirmed guess just
+to fill in a number), **`ContainerTeamRecord` does NOT gain a `budget`
+field from this pass**, and `container_bridge.rs`'s `Team.budget` stays
+honestly `0` — see its own updated comment for the full reasoning inline.
+The UI-facing currency label was still fixed independently of this
+(`ui/src/routes/TeamScreen.svelte`'s "Budget (pesetas)" label was wrong
+regardless of the parsing question — pesetas are Spanish, not Argentine;
+changed to "Budget (Pesos Argentinos)").
+
+### 11.4 Coach chain absence is now understood to be the norm, not the exception
+
+With the §11.1 fix, re-running the file-wide sanity pass shows **only
+River has a locatable coach chain**; all other 54 teams (including Vélez)
+now honestly report `coach: None`. This is consistent with — and now much
+better explained than — the earlier "successfully-parsed teams show
+`coach: (none found)` — expected" note from §8.2: it's not that the
+coach-marker heuristic is flaky per-team, it's that a locatable `02 02`
+coach-chain marker genuinely appears to exist (at least in the region
+before the roster) for only a small minority of records in this file.
+
 ## Investigation tools (all under `crates/pcf-codec/examples/`)
 
 | Tool | Purpose |
@@ -1153,6 +1298,7 @@ way §6.2's five River facts were.
 | `build_synthetic_golden.rs` | Unrelated to PKF investigation — regenerates `fixtures/golden/synthetic_minimal.dbc` from the in-code synthetic `Dbc` builder (Agent A's TDD fixture, not real data). |
 | `investigate_editor_pm_dbc.rs` | Eighth-pass investigator (§10, new): lossy-decodes `short_name`/`stadium_name`/`long_name` (plus, optionally, a raw unstructured tail dump) from a directory of real `EQ97####.DBC` override files from an EXTERNAL corpus (the community "EDITOR-PM9798" tool — never bundled with or copied into this repo). Usage: `cargo run -p pcf-codec --example investigate_editor_pm_dbc -- <dir-with-EQ97-files> [charmap-path]`. |
 | `investigate_editor_pm_dbc_full.rs` | Ninth-pass investigator (§10.2, new): attempts a full structural walk of one of those external DBC files using this project's own `dbc.rs` field layout, lossily. Surfaced a genuine negative finding (§10.2: this corpus's team-info layout differs from `dbc.rs`'s current assumptions) rather than being the main source of new charmap evidence. Usage: `cargo run -p pcf-codec --example investigate_editor_pm_dbc_full -- <dir-with-EQ97-files> [charmap-path]`. |
+| `investigate_velez.rs` | Tenth-pass investigator (§11, new): isolates Vélez Sarsfield's real record and instruments the coach-marker/player-marker candidate scans byte-by-byte, plus a file-wide "budget-offset" dump (bytes right after `president` for every team) and a file-wide `number == 0` sanity pass. Root-caused §11.1's coach/roster search-order bug and §11.3's sponsor-name discovery. Usage: `cargo run -p pcf-codec --example investigate_velez -- <path-to-EQ003003.PKF> [charmap-path]`. |
 
 All of these are run inside the Docker dev container (Rust isn't
 installed on the host): `docker compose -f docker-compose.dev.yml exec
