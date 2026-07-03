@@ -53,6 +53,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ui/package-lock.json
+
+      # tauri.conf.json's build.frontendDist points at ui/dist, and
+      # tauri-build's proc macro checks it exists at compile time even for
+      # plain `cargo check`/`clippy`/`test` run outside the Tauri CLI.
+      - name: Build UI (needed for tauri-build's frontendDist check)
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
 
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
